@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace soko
 {
@@ -67,12 +68,12 @@ namespace soko
         public static Level Parse(string text) 
         {
             var lines = text.Split(new []{ "\r", "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
-            var width = lines[0].Length;
+            var width = lines.Max(line => line.Length);
             var cells = new List<Cell>();
 
             foreach (var line in lines)
             {
-                if (line.Length != width) throw new ArgumentException($"Invalid line length ({line.Length} != {width}).");
+                var column = 0;
                 foreach (var ch in line)
                 {
                     switch (ch)
@@ -93,7 +94,9 @@ namespace soko
                             break;
                         default: throw new ArgumentException($"Invalid character {ch}.");
                     }
+                    column++;
                 }
+                while (column++ < width) cells.Add(Cell.Empty);
             }
             return new Level(cells.ToArray(), width);
         }
