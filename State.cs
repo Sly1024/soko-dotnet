@@ -1,3 +1,4 @@
+using System.Text;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,11 +8,12 @@ namespace soko
     public class State
     {
         Level level;
-        int[] boxPositions;
+        public int[] boxPositions;
         int playerPosition;
 
-        const int WALL = 255;
-        const int BOX = 254;
+        const int WALL = int.MaxValue;
+        const int BOX = WALL - 1;
+        const int BLOCKED = BOX;
 
         int[] table;
         int currentReachable = 0;
@@ -49,8 +51,14 @@ namespace soko
         public void CalculatePlayerReachableMap()
         {
             var width = level.width;
-            // TODO: what if currentReachable overflows?
-            table[playerPosition] = ++currentReachable;
+
+            // if currentReachable overflows
+            if (++currentReachable >= BLOCKED) {
+                FillTable();
+                currentReachable = 1;
+            }
+
+            table[playerPosition] = currentReachable;
 
             var queue = new Queue<int>();
             queue.Enqueue(playerPosition);
@@ -59,10 +67,15 @@ namespace soko
                 var pos = queue.Dequeue();
                 // update player position to be the lowest value
                 if (pos < playerPosition) playerPosition = pos;
-                if (table[pos + 1] != currentReachable && table[pos + 1] < BOX) { table[pos + 1] = currentReachable; queue.Enqueue(pos + 1); }
-                if (table[pos - 1] != currentReachable && table[pos - 1] < BOX) { table[pos - 1] = currentReachable; queue.Enqueue(pos - 1); }
-                if (table[pos + width] != currentReachable && table[pos + width] < BOX) { table[pos + width] = currentReachable; queue.Enqueue(pos + width); }
-                if (table[pos - width] != currentReachable && table[pos - width] < BOX) { table[pos - width] = currentReachable; queue.Enqueue(pos - width); }
+                checkPosition(pos + 1);
+                checkPosition(pos - 1);
+                checkPosition(pos + width);
+                checkPosition(pos - width);
+            }
+
+            void checkPosition(int pos)
+            {
+                if (table[pos] != currentReachable && table[pos] < BLOCKED) { table[pos] = currentReachable; queue.Enqueue(pos); }
             }
         }
 
@@ -85,7 +98,7 @@ namespace soko
                 for (var dir = 0; dir < 4; dir++)
                 {
                     var offset = GetOffset((Direction)dir, level.width);
-                    if (table[boxPos - offset] == currentReachable && table[boxPos + offset] < BOX) {
+                    if (table[boxPos - offset] == currentReachable && table[boxPos + offset] < BLOCKED) {
                         moves.Add(new Move { boxIndex = boxIdx, direction = (Direction)dir });
                     }
                 }
@@ -124,6 +137,43 @@ namespace soko
         internal bool IsEndState()
         {
             return boxPositions.SequenceEqual(level.goalPositions);
+        }
+
+        internal string FindPlayerPath(int playerPos, Move move)
+        {
+            var width = level.width;
+            var offset = GetOffset(move.direction, width);
+            var targetPos = boxPositions[move.boxIndex] - offset;
+            FillTable();
+            table[targetPos] = 1;
+
+            var queue = new Queue<int>();
+            queue.Enqueue(targetPos);
+
+            void checkPosition(int pos, int distance)
+            {
+                if (table[pos] == 0) { table[pos] = distance; queue.Enqueue(pos); }
+            }
+
+            while (queue.Count > 0) {
+                var pos = queue.Dequeue();
+                var distance = table[pos] + 1;
+                checkPosition(pos + 1, distance);
+                checkPosition(pos - 1, distance);
+                checkPosition(pos + width, distance);
+                checkPosition(pos - width, distance);
+                if (table[playerPos] > 0) break;
+            }
+
+            var sb = new StringBuilder();
+            while (playerPos != targetPos) {
+                var dist = table[playerPos] - 1;
+                if (table[playerPos + 1] == dist) { playerPos++; sb.Append('r'); }
+                else if (table[playerPos - 1] == dist) { playerPos--; sb.Append('l'); }
+                else if (table[playerPos + width] == dist) { playerPos += width; sb.Append('d'); }
+                else if (table[playerPos - width] == dist) { playerPos -= width; sb.Append('u'); }
+            }
+            return sb.ToString();
         }
 
         public override bool Equals(object obj)

@@ -1,0 +1,26 @@
+Version 1
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\micro_5.sok
+Time: 00:00:06.3629056
+Found solution, checked 989473 states.
+RlddLrRdrruLuUUruulDDDlluuRlddddldlluRuuuuRRddLrddLdlluRuUrrddLdlUrrRdrruLLLuurrDuuruulDDDlluuRlddrruruulDllddddrdrruL
+30 pushes, 88 moves
+Private Mem: 534 MB
+GC Mem: 497 MB
+GC Allocated: 2381 MB
+GC Gen0 Coll: 389
+GC Gen1 Coll: 134
+GC Gen2 Coll: 7
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
+Time: 00:01:20.3926263
+Found solution, checked 6199822 states.
+ullluuuLUluurDldlDDulldddrRRRRRlllllluuurrdDuuuruulDDDDulldddrRRRllddrrrruuRRRRRRllllllddlllluurrRRlllllluuurrdDuulldddrRddrrrruuluuulLuurDllDlldddrrddrrrruuluuuLulldDullddlldRRuuurrurrdrdddrddlllluuRRllddrrrruuRRRRRdrUluRRlldlllllddlllluurrRuuululldlldddRRRllluuurrurrdrdddRddlllluurRllddrrrruuRRRRRdrUluRldlllllddlllluurrRuuulullddDuuurrdLulDDulldddrRRllluuurrrrrdddRddlllluurRllddrrrruuRRRRRurDllllllddlllluurrRuuullldDuulldddrRRluuurrrdddRddlllluurRllddrrrruuRRRRRdRRlluurDRlllllllddlllluurrRRRRRRRRldR
+97 pushes, 409 moves
+Private Mem: 6246 MB
+GC Mem: 6092 MB
+GC Allocated: 26484 MB
+GC Gen0 Coll: 4318
+GC Gen1 Coll: 1601
+GC Gen2 Coll: 19
+
