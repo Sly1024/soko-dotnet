@@ -60,23 +60,11 @@ namespace soko
 
             table[playerPosition] = currentReachable;
 
-            var queue = new Queue<int>();
-            queue.Enqueue(playerPosition);
-
-            while (queue.Count > 0) {
-                var pos = queue.Dequeue();
+            Filler.Fill(table, width, playerPosition, 
                 // update player position to be the lowest value
-                if (pos < playerPosition) playerPosition = pos;
-                checkPosition(pos + 1);
-                checkPosition(pos - 1);
-                checkPosition(pos + width);
-                checkPosition(pos - width);
-            }
-
-            void checkPosition(int pos)
-            {
-                if (table[pos] != currentReachable && table[pos] < BLOCKED) { table[pos] = currentReachable; queue.Enqueue(pos); }
-            }
+                pos => { if (pos < playerPosition) playerPosition = pos; return false; },
+                (value, idx) => (value != currentReachable && value < BLOCKED) ? currentReachable : -1
+            );
         }
 
         private int GetOffset(Direction direction, int width) {
@@ -147,23 +135,12 @@ namespace soko
             FillTable();
             table[targetPos] = 1;
 
-            var queue = new Queue<int>();
-            queue.Enqueue(targetPos);
+            int distance = 0;
 
-            void checkPosition(int pos, int distance)
-            {
-                if (table[pos] == 0) { table[pos] = distance; queue.Enqueue(pos); }
-            }
-
-            while (queue.Count > 0) {
-                var pos = queue.Dequeue();
-                var distance = table[pos] + 1;
-                checkPosition(pos + 1, distance);
-                checkPosition(pos - 1, distance);
-                checkPosition(pos + width, distance);
-                checkPosition(pos - width, distance);
-                if (table[playerPos] > 0) break;
-            }
+            Filler.Fill(table, width, targetPos, 
+                pos => { distance = table[pos] + 1; return pos == playerPos; },
+                (value, pos) => value == 0 ? distance : -1
+            );
 
             var sb = new StringBuilder();
             while (playerPos != targetPos) {

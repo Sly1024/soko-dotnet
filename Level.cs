@@ -33,6 +33,7 @@ namespace soko
             this.table = table;
             this.width = width;
             PreProcessTable();
+            FillPerimeterWithWall();
         }
 
         private void PreProcessTable()
@@ -63,6 +64,29 @@ namespace soko
 
             boxPositions = boxes.ToArray();
             goalPositions = goals.ToArray();
+        }
+
+        private void FillWithWall(int position) 
+        {
+            if (table[position] != Cell.Wall) {
+                Filler.FillBoundsCheck(table, width, position, 
+                    (value) => value != Cell.Wall,
+                    Cell.Wall
+                );
+            }
+        }
+
+        private void FillPerimeterWithWall()
+        {
+            for (var i = 0; i < width; i++) {
+                FillWithWall(i);
+                FillWithWall(table.Length - 1 - i);
+            }
+
+            for (var i = table.Length / width - 2; i > 0; i--) {
+                FillWithWall(i * width);
+                FillWithWall(i * width + width - 1);
+            }
         }
 
         public static Level Parse(string text) 

@@ -1,10 +1,12 @@
-[ ] Check if the level is fully enclosed (surrounded by walls)
+[✓] Check if the level is fully enclosed (surrounded by walls)
 [ ] Dead cell detection
 [ ] Don't keep the "table" in state
 [ ] More efficient GeneratePlayerReachable (flood-fill)
 [ ] Backwards tree search
 [ ] Choosing next state based on Heuristic distance
 [ ] Zobrist hash
+[ ] Tunnel detection
 [ ] Corral detection
 [ ] Deadlock patterns
 [ ] Packing order
+[ ] Reverse solving

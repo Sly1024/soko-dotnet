@@ -3,7 +3,7 @@ Sokoban solver in dotnet
 
 ## Phase 1
 
-In the first iteration I just wanted to create the simpest solver that can solve a level. I'll improve it later.
+In the first iteration I just wanted to create the simplest solver that can solve a level. I'll improve it later.
 
 It is able to do it by reading in a `.sok` file in text format (passed as argument).
 The `Level` class is responsible for parsing the text, building a table with Cells and extracting the box positions, 
