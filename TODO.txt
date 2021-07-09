@@ -1,4 +1,6 @@
 [✓] Check if the level is fully enclosed (surrounded by walls)
+[✓] Reverse solving
+[ ] Forward+Reverse solving
 [ ] Dead cell detection
 [ ] Don't keep the "table" in state
 [ ] More efficient GeneratePlayerReachable (flood-fill)
@@ -9,4 +11,4 @@
 [ ] Corral detection
 [ ] Deadlock patterns
 [ ] Packing order
-[ ] Reverse solving
+[ ] Multi-threading

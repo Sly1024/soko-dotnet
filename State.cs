@@ -167,7 +167,12 @@ namespace soko
 
         internal bool IsStartState()
         {
-            return boxPositions.SequenceEqual(level.boxPositions);
+            return IsPlayerReachable(level.playerPosition) && boxPositions.SequenceEqual(level.boxPositions);
+        }
+
+        private bool IsPlayerReachable(int position)
+        {
+            return table[position] == currentReachable;
         }
 
         internal int GetPlayerPositionFor(Move move) {

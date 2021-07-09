@@ -62,3 +62,14 @@ GC Gen0 Coll: 2
 GC Gen1 Coll: 1
 GC Gen2 Coll: 0
 
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok 
+Time: 00:00:33.3545726
+Found solution, checked 3996170 states.
+ullluuuLUllDlldddrRRRRRRRRRRurDldRRllulllllluuululldDDuulldddrRRRRRRRRRRurDldRlulllllluuululuulDDDDDuulldddrRRRRRRRRRRRRlllllllluuulLulDDDuulldddrRRRRRRRRRRRllllllluuulluuurDDllddddrrruuuLLulDDDuulldddrRRRRRRRRRRlllllllllllulldRRRRRRllddrrrruurrrrrdrUllllllddlllluurrRRRRRRRuRRllddrUluR
+97 pushes, 189 moves
+Private Mem: 4007 MB
+GC Mem: 3867 MB
+GC Allocated: 17688 MB
+GC Gen0 Coll: 2905
+GC Gen1 Coll: 1145
+GC Gen2 Coll: 11

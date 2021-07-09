@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "soko": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\Prog\\dotnet\\soko\\levels\\orig_1.sok"
+    }
+  }
+}
