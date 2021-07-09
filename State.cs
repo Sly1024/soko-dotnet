@@ -48,6 +48,24 @@ namespace soko
             }
         }
 
+        // for debugging
+        internal void PrintTable()
+        {
+            var sb = new StringBuilder();
+            for (var i = 0; i < table.Length; i++) {
+                sb.Append(table[i] switch {
+                    WALL => "#",
+                    BOX => "$",
+                    _ => table[i].ToString()
+                });
+                sb.Append(" ");
+                if (i % level.width == level.width -1) sb.Append("\n");
+            }
+            Console.WriteLine(sb.ToString());
+            Console.WriteLine($"PlayerPos: {playerPosition}");
+            Console.WriteLine($"boxPositions: {string.Join(",", boxPositions)}");
+        }
+
         public void CalculatePlayerReachableMap()
         {
             var width = level.width;
@@ -86,7 +104,13 @@ namespace soko
                 for (var dir = 0; dir < 4; dir++)
                 {
                     var offset = GetOffset((Direction)dir, level.width);
-                    if (table[boxPos - offset] == currentReachable && table[boxPos + offset] < BLOCKED) {
+                    // push moves
+                    // if (table[boxPos - offset] == currentReachable && table[boxPos + offset] < BLOCKED) {
+                    //     moves.Add(new Move { boxIndex = boxIdx, direction = (Direction)dir });
+                    // }
+
+                    // pull moves
+                    if (table[boxPos - offset] == currentReachable && table[boxPos - offset*2] < BLOCKED) {
                         moves.Add(new Move { boxIndex = boxIdx, direction = (Direction)dir });
                     }
                 }
@@ -101,25 +125,39 @@ namespace soko
             var offset = GetOffset(move.direction, level.width);
 
             // update boxPositions
-            boxPositions[boxIdx] = boxPos + offset;
-            FixBoxOrder(boxIdx);
+            SetBoxPosition(boxIdx, boxPos + offset);
 
             table[boxPos + offset] = BOX;
             table[boxPos] = currentReachable;
             playerPosition = boxPos;
         }
+        
+        public int ApplyPullMove(Move move)
+        {
+            var boxIdx = move.boxIndex;
+            var boxPos = boxPositions[boxIdx];
+            var offset = GetOffset(move.direction, level.width);
 
-        private void FixBoxOrder(int boxIdx)
+            // update boxPositions
+            var newBoxIdx = SetBoxPosition(boxIdx, boxPos - offset);
+
+            table[boxPos - offset] = BOX;
+            table[boxPos] = 0;  // TODO: reachable?? Doesn't matter if we don't reuse the reachable table
+            playerPosition = boxPos - offset*2;
+            return newBoxIdx;
+        }
+
+        private int SetBoxPosition(int boxIdx, int position)
         {
             int temp;
-            while (boxIdx > 0 && (temp = boxPositions[boxIdx-1]) > boxPositions[boxIdx]) {
-                boxPositions[boxIdx-1] = boxPositions[boxIdx];
+            while (boxIdx > 0 && (temp = boxPositions[boxIdx-1]) > position) {
                 boxPositions[boxIdx--] = temp;
             }
-            while (boxIdx < boxPositions.Length-1 && (temp = boxPositions[boxIdx+1]) < boxPositions[boxIdx]) {
-                boxPositions[boxIdx+1] = boxPositions[boxIdx];
+            while (boxIdx < boxPositions.Length-1 && (temp = boxPositions[boxIdx+1]) < position) {
                 boxPositions[boxIdx++] = temp;
             }
+            boxPositions[boxIdx] = position;
+            return boxIdx;
         }
 
         internal bool IsEndState()
@@ -127,11 +165,23 @@ namespace soko
             return boxPositions.SequenceEqual(level.goalPositions);
         }
 
+        internal bool IsStartState()
+        {
+            return boxPositions.SequenceEqual(level.boxPositions);
+        }
+
+        internal int GetPlayerPositionFor(Move move) {
+            return boxPositions[move.boxIndex] - GetOffset(move.direction, level.width);
+        }
+
         internal string FindPlayerPath(int playerPos, Move move)
         {
+            return FindPlayerPath(playerPos, GetPlayerPositionFor(move));
+        }
+
+        internal string FindPlayerPath(int playerPos, int targetPos)
+        {
             var width = level.width;
-            var offset = GetOffset(move.direction, width);
-            var targetPos = boxPositions[move.boxIndex] - offset;
             FillTable();
             table[targetPos] = 1;
 

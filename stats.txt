@@ -12,6 +12,18 @@ GC Gen0 Coll: 389
 GC Gen1 Coll: 134
 GC Gen2 Coll: 7
 
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\micro_9.sok
+Time: 00:00:00.1023566
+Found solution, checked 16906 states.
+luluuluRRldddrddlUUUUddrdrrurrdLLruuuluurDDDDldLLuluuruRldlluRRldddrdrruruuuulDrdddldlluluuruRRurDDulllldddrddlUUUUddrdrrurrdLLLLuluururrrdDuullldlluRRRRurDDulllldddrdrrrruLdllluluururrrdDDuuulllldddrddlUUUUrurrrdddrdLLLrruuuullldlluRRRRurDDDDuuulllldddddrUluuururrrdddrdLLLLdlUUUddrrrruuuullllldR
+64 pushes, 233 moves
+Private Mem: 19 MB
+GC Mem: 9 MB
+GC Allocated: 28 MB
+GC Gen0 Coll: 5
+GC Gen1 Coll: 2
+GC Gen2 Coll: 1
+
 PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
 Time: 00:01:20.3926263
 Found solution, checked 6199822 states.
@@ -24,15 +36,29 @@ GC Gen0 Coll: 4318
 GC Gen1 Coll: 1601
 GC Gen2 Coll: 19
 
+Version 2 - Reverse Solve
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\micro_5.sok
+Time: 00:00:00.0184537
+Found solution, checked 2846 states.
+ddRluuRlddrdrruLuUllddRlLruurrUruulDDDlluuRlddddldlluRuuuuRRddddLruuLrddldlluRuUrrddLdlUrrrdrruLLLuurrDullddrdrruLuuuruulDDDlluuRlddrruruulD
+30 pushes, 110 moves
+Private Mem: 10 MB
+GC Mem: 3 MB
+GC Allocated: 4 MB
+GC Gen0 Coll: 1
+GC Gen1 Coll: 0
+GC Gen2 Coll: 0
+
 PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\micro_9.sok
-Time: 00:00:00.1023566
-Found solution, checked 16906 states.
-luluuluRRldddrddlUUUUddrdrrurrdLLruuuluurDDDDldLLuluuruRldlluRRldddrdrruruuuulDrdddldlluluuruRRurDDulllldddrddlUUUUddrdrrurrdLLLLuluururrrdDuullldlluRRRRurDDulllldddrdrrrruLdllluluururrrdDDuuulllldddrddlUUUUrurrrdddrdLLLrruuuullldlluRRRRurDDDDuuulllldddddrUluuururrrdddrdLLLLdlUUUddrrrruuuullllldR
-64 pushes, 233 moves
-Private Mem: 19 MB
-GC Mem: 9 MB
-GC Allocated: 28 MB
-GC Gen0 Coll: 5
-GC Gen1 Coll: 2
-GC Gen2 Coll: 1
+Time: 00:00:00.0340925
+Found solution, checked 5498 states.
+ruruuluurDDlulldlluRRRRllldddrddlUUrdrrurrdLLLLulUUrurrdrDululldlddrdrrrruLdllluluuluRRldddrddlUUrdrrruuuluurDDDDrdLLLLulUUruRldlddrdrrruuuuulDlldlluRRRRurDDDDrdLLruuuulllldddrddlUUUUrurrrddddlLrruuuullldlluRRRRurDDDDrdLLruuuulllldddddrUluuururrrddddlLLdlUUUddrrrruuuullllldR
+64 pushes, 211 moves
+Private Mem: 14 MB
+GC Mem: 3 MB
+GC Allocated: 8 MB
+GC Gen0 Coll: 2
+GC Gen1 Coll: 1
+GC Gen2 Coll: 0
 
