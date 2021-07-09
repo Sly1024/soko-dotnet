@@ -4,7 +4,6 @@
 [ ] Dead cell detection
 [ ] Don't keep the "table" in state
 [ ] More efficient GeneratePlayerReachable (flood-fill)
-[ ] Backwards tree search
 [ ] Choosing next state based on Heuristic distance
 [ ] Zobrist hash
 [ ] Tunnel detection
