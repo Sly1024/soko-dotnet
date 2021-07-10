@@ -40,3 +40,22 @@ for when a box can be pulled in a certain direction is different from the push c
 Surprisingly, the reverse solve (without any deadlock detection) performs much better, becaue it avoids a lot of states where
 the boxes would be in a deadlock position. Imagine pushing a box into a corner. You can never pull a box into a corner.
 There are still room for improvement, but I'm hoping that the combined forward + reverse solve will perform even better.
+
+## Phase 3 - Forward + Backward solving
+
+I run both the forward and backward solving (on two different threads), and whenever one of them reaches a state that has
+already been visited by the other thread then we have a solution. 
+
+In theory this should be more efficient than both of the one-direction solves, but I need to use a ConcurrentDictionary to
+facilitate accessing both `visitedStates` collection from the other thread.
+
+An interesting side effect is that the solution is non-deterministic. Whichever thread finds the "common" state will exit 
+from its main loop and set the `commonState` variable, which is tested in each loop cycle in the other thread, so it can
+also exit as soon as a solution is found. The solution depends on the timing of the threads. 
+
+However, since this (and all previous) iterations are based on a BFS in push moves, all solutions are push-optimal.
+E.g. the number of pushes are always the same, but the number of moves may wary depending on thread timing.
+
+Note: There's a bug, the demo0.sok (simplest level) has a one move solution and if the *wrong* thread finishes first, 
+the program runs into an error trying to index a dictionary with a null key. I'm not going to fix this, this is not the 
+final solution anyway.

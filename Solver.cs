@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Collections.Concurrent;
+using System.Threading.Tasks;
 
 namespace soko
 {
@@ -14,81 +16,117 @@ namespace soko
     public class Solver
     {
         private Level level;
-        private Dictionary<State, CameFrom> visitedStates;
-        private State endState;
-        private List<State> startStates = new List<State>();
-        private bool reversed;
+        private volatile State commonState;
+        private State startState;
+        private List<State> endStates;
+        private ConcurrentDictionary<State, CameFrom> forwardVisitedStates;
+        private ConcurrentDictionary<State, CameFrom> backwardVisitedStates;
 
         public Solver(Level level)
         {
             this.level = level;
         }
 
-        public bool Solve(bool reversed)
+        public async Task Solve() 
         {
-            this.reversed = reversed;
+            forwardVisitedStates = new ConcurrentDictionary<State, CameFrom>();
+            backwardVisitedStates = new ConcurrentDictionary<State, CameFrom>();
+
+            startState = new State(level, level.boxPositions, level.playerPosition);
+            startState.CalculatePlayerReachableMap();
+            forwardVisitedStates.TryAdd(startState, new CameFrom());
+
+            endStates = new List<State>();
+            
+            var endPlayerPositions = GenerateEndPlayerPositions();
+            foreach (var endPlayerPos in endPlayerPositions)
+            {
+                var state = new State(level, level.goalPositions, endPlayerPos);
+                endStates.Add(state);
+                state.CalculatePlayerReachableMap();
+                backwardVisitedStates.TryAdd(state, new CameFrom());
+            }
+
             var watch = new Stopwatch();
-
-            visitedStates = new Dictionary<State, CameFrom>();
-            var statesToProcess = new Queue<State>();
-
             watch.Start();
 
-            // Console.WriteLine("Identified End positions");
+            await Task.WhenAny(new [] {
+                Task.Run(() => {
+                    SolveForward(forwardVisitedStates, backwardVisitedStates);
+                }),
+                Task.Run(() => {
+                    SolveReverse(backwardVisitedStates, forwardVisitedStates);
+                })
+            });
+            
+            watch.Stop();
 
-            if (reversed) {
-                var endPlayerPositions = GenerateEndPlayerPositions();
-                foreach (var endPlayerPos in endPlayerPositions)
-                {
-                    var state = new State(level, level.goalPositions, endPlayerPos);
-                    startStates.Add(state);
-                    state.CalculatePlayerReachableMap();
-                    statesToProcess.Enqueue(state);
-                    visitedStates.Add(state, new CameFrom());
-                }
-            } else {
-                var state = new State(level, level.boxPositions, level.playerPosition);
-                startStates.Add(state);
-                state.CalculatePlayerReachableMap();
-                statesToProcess.Enqueue(state);
-                visitedStates.Add(state, new CameFrom());
-            }
+            Console.WriteLine("Time: " + watch.Elapsed);
+
+            Console.WriteLine($"Forward states {forwardVisitedStates.Count}");
+            Console.WriteLine($"Backwards states {backwardVisitedStates.Count}");
+        }
+
+        private void SolveForward(ConcurrentDictionary<State, CameFrom> visitedStates, ConcurrentDictionary<State, CameFrom> otherVisitedStates)
+        {
+            var statesToProcess = new Queue<State>();
+            statesToProcess.Enqueue(startState);
 
             while (statesToProcess.Count > 0) {
                 var state = statesToProcess.Dequeue();
 
-                // Console.WriteLine("Processing state:");
-                // state.PrintTable();
-
-                var moves = state.GetPossibleMoves(reversed);
+                var moves = state.GetPossibleMoves(false);
                 foreach (var move in moves)
                 {
-                    // Console.WriteLine($"Trying move {move}");
-
                     var newState = new State(state);
-                    var boxIdx = reversed ? newState.ApplyPullMove(move) : newState.ApplyPushMove(move);
+                    newState.ApplyPushMove(move);
                     newState.CalculatePlayerReachableMap();
-                    
-                    // newState.PrintTable();
 
-                    if (!visitedStates.ContainsKey(newState)) {
-                        visitedStates.Add(newState, new CameFrom { state = state, 
-                            move = new Move { boxIndex = boxIdx, direction = move.direction } 
-                        });
+                    if (commonState != null) return;
+
+                    if (visitedStates.TryAdd(newState, new CameFrom { state = state, move = move })) {
+                        if (otherVisitedStates.ContainsKey(newState)) {
+                            commonState = newState;
+                            return;
+                        }
                         statesToProcess.Enqueue(newState);
-                    }
-
-                    if (reversed ? newState.IsStartState() : newState.IsEndState()) {
-                        endState = newState;
-                        watch.Stop();
-                        Console.WriteLine("Time: " + watch.Elapsed);
-                        return true;
                     }
                 }
             }
 
-            Console.WriteLine("No solution found.");
-            return false;
+            return;
+        }
+
+        private void SolveReverse(ConcurrentDictionary<State, CameFrom> visitedStates, ConcurrentDictionary<State, CameFrom> otherVisitedStates)
+        {
+            var statesToProcess = new Queue<State>(endStates);
+           
+            while (statesToProcess.Count > 0) {
+                var state = statesToProcess.Dequeue();
+
+                var moves = state.GetPossibleMoves(true);
+                foreach (var move in moves)
+                {
+                    var newState = new State(state);
+                    var boxIdx = newState.ApplyPullMove(move);
+                    newState.CalculatePlayerReachableMap();
+                    
+                    if (commonState != null) return;
+
+                    if (visitedStates.TryAdd(newState, new CameFrom { state = state, 
+                            move = new Move { boxIndex = boxIdx, direction = move.direction }
+                        })) 
+                    {
+                        if (otherVisitedStates.ContainsKey(newState)) {
+                            commonState = newState;
+                            return;
+                        }
+                        statesToProcess.Enqueue(newState);
+                    }
+                }
+            }
+
+            return;
         }
 
         private int[] GenerateEndPlayerPositions()
@@ -114,27 +152,51 @@ namespace soko
 
         public void PrintSolution()
         {
-            Console.WriteLine($"Found solution, checked {visitedStates.Count} states.");
-            var steps = new List<CameFrom>();
-            var state = endState;
+            var forwardSteps = new List<CameFrom>();
+            var state = commonState;
 
-            while (!startStates.Contains(state)) {
+            while (state != startState) {
+                var from = forwardVisitedStates[state];
+                forwardSteps.Add(from);
+                state = from.state;
+            }
+
+            var backwardSteps = new List<CameFrom>();
+            state = commonState;
+
+            while (!endStates.Contains(state)) {
+                var from = backwardVisitedStates[state];
+                backwardSteps.Add(from);
+                state = from.state;
+            }
+
+            var sb = new StringBuilder();
+            var playerPos = WriteSolutionMoves(sb, forwardSteps);
+            WriteReversedSolutionMoves(sb, backwardSteps, playerPos);
+            string solution = sb.ToString();
+
+            Console.WriteLine(solution);
+            int pushCount = forwardSteps.Count + backwardSteps.Count;
+            Console.WriteLine($"{pushCount} pushes, {solution.Length - pushCount} moves");
+        }
+
+        private List<CameFrom> GetStepsFrom(ConcurrentDictionary<State, CameFrom> visitedStates) 
+        {
+            var steps = new List<CameFrom>();
+            var state = commonState;
+
+            while (startState != state) {
                 var from = visitedStates[state];
                 steps.Add(from);
                 state = from.state;
             }
-
-            var solution = reversed ? GetReversedSolutionMoves(steps) : GetSolutionMoves(steps);
-            Console.WriteLine(solution);
-            Console.WriteLine($"{steps.Count} pushes, {solution.Length - steps.Count} moves");
+            return steps;
         }
 
-        private string GetSolutionMoves(List<CameFrom> steps) 
+        private int WriteSolutionMoves(StringBuilder sb, List<CameFrom> steps) 
         {
             steps.Reverse();
-
             var playerPos = level.playerPosition;
-            var sb = new StringBuilder();
 
             foreach (var step in steps)
             {
@@ -143,15 +205,12 @@ namespace soko
                 playerPos = step.state.boxPositions[step.move.boxIndex];
             }
 
-            return sb.ToString();
+            return playerPos;
         }
 
-        private string GetReversedSolutionMoves(List<CameFrom> steps) 
+        private void WriteReversedSolutionMoves(StringBuilder sb, List<CameFrom> steps, int playerPos) 
         {
-            var playerPos = level.playerPosition;
-            var sb = new StringBuilder();
-
-            var state = endState;
+            var state = commonState;
 
             foreach (var step in steps)
             {
@@ -160,8 +219,6 @@ namespace soko
                 playerPos = state.boxPositions[step.move.boxIndex];
                 state = step.state;
             }
-
-            return sb.ToString();
         }
 
     }

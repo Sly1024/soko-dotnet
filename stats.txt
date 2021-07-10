@@ -73,3 +73,43 @@ GC Allocated: 17688 MB
 GC Gen0 Coll: 2905
 GC Gen1 Coll: 1145
 GC Gen2 Coll: 11
+
+Version 3 - Fwd + Bckwd
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\micro_5.sok 
+Time: 00:00:00.0151711
+Forward states 941
+Backwards states 1335
+30 pushes, 104 moves
+Private Mem: 11 MB
+GC Mem: 3 MB
+GC Allocated: 3 MB
+GC Gen0 Coll: 1
+GC Gen1 Coll: 0
+GC Gen2 Coll: 0
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\micro_9.sok
+Time: 00:00:00.0375465
+Forward states 3574
+Backwards states 5011
+ruruuluurDDlulldlluRRRRllldddrddlUUrdrrurrdLLLLulUUrurrdrDululldlddrdrrrruLdllluluuluRRldddrddlUUrdrrruuuluurDDDDrdLLLLulUUruRldlddrdrrruuuuulDlldlluRRRRurDDDDrdLLruuuulllldddrddlUUUUrurrrddddlLrruuuullldlluRRRRurDDDDrdLLruuuulllldddddrUluuururrrddddlLLdlUUUddrrrruuuullllldR
+64 pushes, 211 moves
+Private Mem: 17 MB 
+GC Mem: 5 MB       
+GC Allocated: 14 MB
+GC Gen0 Coll: 3    
+GC Gen1 Coll: 1    
+GC Gen2 Coll: 0  
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok  
+Time: 00:00:30.5782144
+Forward states 1706249
+Backwards states 1803229
+ullluuuLUluurDldlDDulldddrRRRRRlllllluuurrdDuuuruulDDDDulldddrRRRllddrrrruuRRRRRRllllllddlllluurrRRlllllluuurrdDuulldddrRddrrrruuluuulLuurDllDlldddrrddrrrruuluuuLulldDulldddrrRRllddrrrruuRRRRRurrDullddrRuulDldRlulllllddlllluurrRRRRRRRRRlllllllluuulullddDuulldddrRRRRRRRRRRRllllllluuulLulDDDuulldddrRRRRRRRRRRlllllllllllulldRRRRRRllddrrrruurrrrrdrUllllllddlllluurrRRRRRRRuRRllddrUluR
+97 pushes, 285 moves
+Private Mem: 3673 MB
+GC Mem: 3440 MB
+GC Allocated: 15892 MB
+GC Gen0 Coll: 2741
+GC Gen1 Coll: 1098
+GC Gen2 Coll: 11
