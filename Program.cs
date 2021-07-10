@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Threading.Tasks;
+using System.IO;
 using System;
 using System.Diagnostics;
 
@@ -9,9 +10,15 @@ namespace soko
         static void Main(string[] args)
         {
             var level = Level.Parse(File.ReadAllText(args[0]));
-            var solver = new Solver(level);
-            if (solver.Solve()) solver.PrintSolution();
+            Task.WhenAll(new [] { RunSolve(level, false), RunSolve(level, true) }).Wait();
             PrintStatistics();
+        }
+
+        private static Task RunSolve(Level level, bool reversed) {
+            return Task.Run(() => {
+                var solver = new Solver(level);
+                if (solver.Solve(reversed)) solver.PrintSolution();
+            });
         }
 
         private static void PrintStatistics() 

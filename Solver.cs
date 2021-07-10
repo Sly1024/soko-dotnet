@@ -15,16 +15,18 @@ namespace soko
     {
         private Level level;
         private Dictionary<State, CameFrom> visitedStates;
-        private State startState;
-        private List<State> endStates = new List<State>();
+        private State endState;
+        private List<State> startStates = new List<State>();
+        private bool reversed;
 
         public Solver(Level level)
         {
             this.level = level;
         }
 
-        public bool Solve()
+        public bool Solve(bool reversed)
         {
+            this.reversed = reversed;
             var watch = new Stopwatch();
 
             visitedStates = new Dictionary<State, CameFrom>();
@@ -34,16 +36,22 @@ namespace soko
 
             // Console.WriteLine("Identified End positions");
 
-            var endPlayerPositions = GenerateEndPlayerPositions();
-            foreach (var endPlayerPos in endPlayerPositions)
-            {
-                var state = new State(level, level.goalPositions, endPlayerPos);
-                endStates.Add(state);
+            if (reversed) {
+                var endPlayerPositions = GenerateEndPlayerPositions();
+                foreach (var endPlayerPos in endPlayerPositions)
+                {
+                    var state = new State(level, level.goalPositions, endPlayerPos);
+                    startStates.Add(state);
+                    state.CalculatePlayerReachableMap();
+                    statesToProcess.Enqueue(state);
+                    visitedStates.Add(state, new CameFrom());
+                }
+            } else {
+                var state = new State(level, level.boxPositions, level.playerPosition);
+                startStates.Add(state);
                 state.CalculatePlayerReachableMap();
                 statesToProcess.Enqueue(state);
                 visitedStates.Add(state, new CameFrom());
-
-                // state.PrintTable();
             }
 
             while (statesToProcess.Count > 0) {
@@ -52,13 +60,13 @@ namespace soko
                 // Console.WriteLine("Processing state:");
                 // state.PrintTable();
 
-                var moves = state.GetPossibleMoves();
+                var moves = state.GetPossibleMoves(reversed);
                 foreach (var move in moves)
                 {
                     // Console.WriteLine($"Trying move {move}");
 
                     var newState = new State(state);
-                    var boxIdx = newState.ApplyPullMove(move);
+                    var boxIdx = reversed ? newState.ApplyPullMove(move) : newState.ApplyPushMove(move);
                     newState.CalculatePlayerReachableMap();
                     
                     // newState.PrintTable();
@@ -70,8 +78,8 @@ namespace soko
                         statesToProcess.Enqueue(newState);
                     }
 
-                    if (newState.IsStartState()) {
-                        startState = newState;
+                    if (reversed ? newState.IsStartState() : newState.IsEndState()) {
+                        endState = newState;
                         watch.Stop();
                         Console.WriteLine("Time: " + watch.Elapsed);
                         return true;
@@ -108,20 +116,42 @@ namespace soko
         {
             Console.WriteLine($"Found solution, checked {visitedStates.Count} states.");
             var steps = new List<CameFrom>();
-            var state = startState;
+            var state = endState;
 
-            while (!endStates.Contains(state)) {
+            while (!startStates.Contains(state)) {
                 var from = visitedStates[state];
                 steps.Add(from);
                 state = from.state;
             }
 
-            // steps.Reverse();
+            var solution = reversed ? GetReversedSolutionMoves(steps) : GetSolutionMoves(steps);
+            Console.WriteLine(solution);
+            Console.WriteLine($"{steps.Count} pushes, {solution.Length - steps.Count} moves");
+        }
+
+        private string GetSolutionMoves(List<CameFrom> steps) 
+        {
+            steps.Reverse();
 
             var playerPos = level.playerPosition;
             var sb = new StringBuilder();
 
-            state = startState;
+            foreach (var step in steps)
+            {
+                sb.Append(step.state.FindPlayerPath(playerPos, step.move));
+                sb.Append(step.move.PushCode);
+                playerPos = step.state.boxPositions[step.move.boxIndex];
+            }
+
+            return sb.ToString();
+        }
+
+        private string GetReversedSolutionMoves(List<CameFrom> steps) 
+        {
+            var playerPos = level.playerPosition;
+            var sb = new StringBuilder();
+
+            var state = endState;
 
             foreach (var step in steps)
             {
@@ -131,11 +161,8 @@ namespace soko
                 state = step.state;
             }
 
-            Console.WriteLine(sb.ToString());
-            Console.WriteLine($"{steps.Count} pushes, {sb.Length - steps.Count} moves");
+            return sb.ToString();
         }
-
-
 
     }
 }

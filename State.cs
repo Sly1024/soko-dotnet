@@ -95,7 +95,7 @@ namespace soko
             };
         }
 
-        public List<Move> GetPossibleMoves()
+        public List<Move> GetPossibleMoves(bool pull)
         {
             var moves = new List<Move>();
             for (var boxIdx = 0; boxIdx < boxPositions.Length; boxIdx++)
@@ -104,13 +104,7 @@ namespace soko
                 for (var dir = 0; dir < 4; dir++)
                 {
                     var offset = GetOffset((Direction)dir, level.width);
-                    // push moves
-                    // if (table[boxPos - offset] == currentReachable && table[boxPos + offset] < BLOCKED) {
-                    //     moves.Add(new Move { boxIndex = boxIdx, direction = (Direction)dir });
-                    // }
-
-                    // pull moves
-                    if (table[boxPos - offset] == currentReachable && table[boxPos - offset*2] < BLOCKED) {
+                    if (table[boxPos - offset] == currentReachable && table[boxPos + (pull ? -2*offset : offset)] < BLOCKED) {
                         moves.Add(new Move { boxIndex = boxIdx, direction = (Direction)dir });
                     }
                 }
@@ -118,7 +112,7 @@ namespace soko
             return moves;
         }
 
-        public void ApplyMove(Move move)
+        public int ApplyPushMove(Move move)
         {
             var boxIdx = move.boxIndex;
             var boxPos = boxPositions[boxIdx];
@@ -130,6 +124,7 @@ namespace soko
             table[boxPos + offset] = BOX;
             table[boxPos] = currentReachable;
             playerPosition = boxPos;
+            return boxIdx;
         }
         
         public int ApplyPullMove(Move move)
