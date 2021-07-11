@@ -1,7 +1,8 @@
 [✓] Check if the level is fully enclosed (surrounded by walls)
 [✓] Reverse solving
 [✓] Forward+Reverse solving
-[ ] Dead cell detection
+[✓] Dead cell detection
+[ ] Deadlock detection
 [ ] Don't keep the "table" in state
 [ ] More efficient GeneratePlayerReachable (flood-fill)
 [ ] Choosing next state based on Heuristic distance

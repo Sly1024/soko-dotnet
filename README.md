@@ -1,6 +1,16 @@
 # soko-dotnet
 Sokoban solver in dotnet
 
+Build:
+```
+dotnet build -c Release
+```
+
+Run:
+```
+.\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
+```
+
 ## Phase 1 - Simple Brute-force
 
 In the first iteration I just wanted to create the simplest solver that can solve a level. I'll improve it later.
@@ -59,3 +69,26 @@ E.g. the number of pushes are always the same, but the number of moves may wary 
 Note: There's a bug, the demo0.sok (simplest level) has a one move solution and if the *wrong* thread finishes first, 
 the program runs into an error trying to index a dictionary with a null key. I'm not going to fix this, this is not the 
 final solution anyway.
+
+## Phase 4 - Dead cell detection
+
+A "dead cell" is a cell on the board that results in a deadlock (cannot solve the level) when a box is pushed into it.
+The simplest example is a corner that is not a goal position. If a box is pushed into a corner, there is no way to move it
+any further. Other dead cells are empty cells along a wall in case the run does not contain goal positions and 
+both ends are dead cell corners.
+
+Example: dead cells are marked with an 'x'.
+
+```
+########       # - wall
+#xxxxxx#       @ - player
+#x @ $ #       $ - box
+#x    .#       . - goal
+########       x - dead cell
+```
+
+These cells can be detected once the level is loaded and we can prevent pushing a box into them by filtering out these in
+the `GetPossibleMoves` function. This only applies to *push moves*. A pull move can never move a box into a dead cell.
+
+Note: Even though dead cell detection only filters out moves/states from a forward solve, it still affects the dual
+forward + backward solve because the two threads reach the common state sooner with less visited states on both sides.

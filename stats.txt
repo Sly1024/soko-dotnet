@@ -1,3 +1,6 @@
+CPU: Intel Core i3-2130 (3.4GHz) 2 core/4 thread
+RAM: 8 GB DDR3
+
 Version 1 - brute force
 
 PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\micro_5.sok
@@ -113,3 +116,19 @@ GC Allocated: 15892 MB
 GC Gen0 Coll: 2741
 GC Gen1 Coll: 1098
 GC Gen2 Coll: 11
+
+Version 4 - Dead cell detection
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
+Time: 00:00:13.5071935
+Forward states 801302
+Backwards states 879877
+ullluuuLUluurDldlDDulldddrRRRRRlllllluuurrdDuuuruulDDDDulldddrRRRllddrrrruuRRRRRRllllllddlllluurrRRlllllluuurrdDuulldddrRddrrrruuluuulLuurDllDlldddrrddrrrruuluuuLulldDulldddrrRRllddrrrruuRRRRRurDllllllddlllluurrRuuulullddDuuurrdLulDrrrdddRRRRRRdRRlluurrDulldRRlllllllluuullllldddrRRRRRRRRRRRllllllluuulllDDuulldddrRRRRRRRRRRlllllllllllulldRRRRRRllddrrrruurrrrrdrUllllllddlllluurrRRRRRRRuRRllddrUluR
+97 pushes, 301 moves
+Private Mem: 1793 MB
+GC Mem: 1651 MB
+GC Allocated: 7365 MB
+GC Gen0 Coll: 1275
+GC Gen1 Coll: 492
+GC Gen2 Coll: 10
+

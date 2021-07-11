@@ -11,6 +11,7 @@ namespace soko
         Goal = 2,
         Box = 4,
         Player = 8,
+        DeadCell = 16,
     }
 
     public static class CellExtensions 
@@ -34,6 +35,7 @@ namespace soko
             this.width = width;
             PreProcessTable();
             FillPerimeterWithWall();
+            DetectDeadCells();
         }
 
         private void PreProcessTable()
@@ -64,6 +66,63 @@ namespace soko
 
             boxPositions = boxes.ToArray();
             goalPositions = goals.ToArray();
+        }
+
+        private void DetectDeadCells()
+        {
+            var cornersInRow = new Dictionary<int, List<int>>();
+            var cornersInColumn = new Dictionary<int, List<int>>();
+
+            // corner detection
+            for (var i = 0; i < table.Length; i++) {
+                if (table[i] != Cell.Wall && table[i] != Cell.Goal && IsCornerCell(i)) {
+                    table[i] |= Cell.DeadCell;
+                    var row = i / width;
+                    var col = i % width;
+                    cornersInRow.TryAdd(row, new List<int>());
+                    cornersInRow[row].Add(i);
+                    cornersInColumn.TryAdd(col, new List<int>());
+                    cornersInColumn[col].Add(i);
+                }
+            }
+
+            foreach (var (row, corners) in cornersInRow) {
+                var pos1 = corners[0];
+                for (var i = 1; i < corners.Count; i++) {
+                    var pos2 = corners[i];
+                    ProcessAlongWall(pos1, pos2, 1, width);
+                    pos1 = pos2;
+                }
+            }
+
+            foreach (var (col, corners) in cornersInColumn) {
+                var pos1 = corners[0];
+                for (var i = 1; i < corners.Count; i++) {
+                    var pos2 = corners[i];
+                    ProcessAlongWall(pos1, pos2, width, 1);
+                    pos1 = pos2;
+                }
+            }
+        }
+
+        private void ProcessAlongWall(int pos1, int pos2, int dir, int lateralDir)
+        {
+            var unsafeLine = true;
+            for (var i = pos1 + dir; i < pos2; i += dir) {
+                if (table[i].has(Cell.Wall | Cell.Goal) || (table[i + lateralDir] != Cell.Wall && table[i - lateralDir] != Cell.Wall)) {
+                    unsafeLine = false;
+                    break;
+                }
+            }
+            if (unsafeLine) {
+                for (var i = pos1 + dir; i < pos2; i += dir) table[i] |= Cell.DeadCell;
+            }
+        }
+
+        private bool IsCornerCell(int pos)
+        {
+            return (table[pos-1] | table[pos+1]).has(Cell.Wall) 
+                && (table[pos-width] | table[pos+width]).has(Cell.Wall);
         }
 
         private void FillWithWall(int position) 

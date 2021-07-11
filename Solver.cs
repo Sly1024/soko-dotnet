@@ -51,12 +51,8 @@ namespace soko
             watch.Start();
 
             await Task.WhenAny(new [] {
-                Task.Run(() => {
-                    SolveForward(forwardVisitedStates, backwardVisitedStates);
-                }),
-                Task.Run(() => {
-                    SolveReverse(backwardVisitedStates, forwardVisitedStates);
-                })
+                Task.Run(SolveForward),
+                Task.Run(SolveReverse)
             });
             
             watch.Stop();
@@ -67,7 +63,7 @@ namespace soko
             Console.WriteLine($"Backwards states {backwardVisitedStates.Count}");
         }
 
-        private void SolveForward(ConcurrentDictionary<State, CameFrom> visitedStates, ConcurrentDictionary<State, CameFrom> otherVisitedStates)
+        private void SolveForward()
         {
             var statesToProcess = new Queue<State>();
             statesToProcess.Enqueue(startState);
@@ -84,8 +80,8 @@ namespace soko
 
                     if (commonState != null) return;
 
-                    if (visitedStates.TryAdd(newState, new CameFrom { state = state, move = move })) {
-                        if (otherVisitedStates.ContainsKey(newState)) {
+                    if (forwardVisitedStates.TryAdd(newState, new CameFrom { state = state, move = move })) {
+                        if (backwardVisitedStates.ContainsKey(newState)) {
                             commonState = newState;
                             return;
                         }
@@ -93,11 +89,9 @@ namespace soko
                     }
                 }
             }
-
-            return;
         }
 
-        private void SolveReverse(ConcurrentDictionary<State, CameFrom> visitedStates, ConcurrentDictionary<State, CameFrom> otherVisitedStates)
+        private void SolveReverse()
         {
             var statesToProcess = new Queue<State>(endStates);
            
@@ -113,11 +107,11 @@ namespace soko
                     
                     if (commonState != null) return;
 
-                    if (visitedStates.TryAdd(newState, new CameFrom { state = state, 
+                    if (backwardVisitedStates.TryAdd(newState, new CameFrom { state = state, 
                             move = new Move { boxIndex = boxIdx, direction = move.direction }
                         })) 
                     {
-                        if (otherVisitedStates.ContainsKey(newState)) {
+                        if (forwardVisitedStates.ContainsKey(newState)) {
                             commonState = newState;
                             return;
                         }
@@ -125,8 +119,6 @@ namespace soko
                     }
                 }
             }
-
-            return;
         }
 
         private int[] GenerateEndPlayerPositions()
@@ -178,19 +170,6 @@ namespace soko
             Console.WriteLine(solution);
             int pushCount = forwardSteps.Count + backwardSteps.Count;
             Console.WriteLine($"{pushCount} pushes, {solution.Length - pushCount} moves");
-        }
-
-        private List<CameFrom> GetStepsFrom(ConcurrentDictionary<State, CameFrom> visitedStates) 
-        {
-            var steps = new List<CameFrom>();
-            var state = commonState;
-
-            while (startState != state) {
-                var from = visitedStates[state];
-                steps.Add(from);
-                state = from.state;
-            }
-            return steps;
         }
 
         private int WriteSolutionMoves(StringBuilder sb, List<CameFrom> steps) 

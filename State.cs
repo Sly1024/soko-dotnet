@@ -14,6 +14,7 @@ namespace soko
         const int WALL = int.MaxValue;
         const int BOX = WALL - 1;
         const int BLOCKED = BOX;
+        const int MAX_REACHABLE = BLOCKED;
 
         int[] table;
         int currentReachable = 0;
@@ -40,7 +41,7 @@ namespace soko
             table = new int[level.table.Length];
             for (var i = 0; i < table.Length; i++)
             {
-                table[i] = (level.table[i] == Cell.Wall) ? WALL : 0;
+                table[i] = level.table[i].has(Cell.Wall) ? WALL : 0;
             }
             foreach (var box in boxPositions)
             {
@@ -71,7 +72,7 @@ namespace soko
             var width = level.width;
 
             // if currentReachable overflows
-            if (++currentReachable >= BLOCKED) {
+            if (++currentReachable >= MAX_REACHABLE) {
                 FillTable();
                 currentReachable = 1;
             }
@@ -95,7 +96,7 @@ namespace soko
             };
         }
 
-        public List<Move> GetPossibleMoves(bool pull)
+        public List<Move> GetPossibleMoves(bool isPull)
         {
             var moves = new List<Move>();
             for (var boxIdx = 0; boxIdx < boxPositions.Length; boxIdx++)
@@ -104,7 +105,11 @@ namespace soko
                 for (var dir = 0; dir < 4; dir++)
                 {
                     var offset = GetOffset((Direction)dir, level.width);
-                    if (table[boxPos - offset] == currentReachable && table[boxPos + (pull ? -2*offset : offset)] < BLOCKED) {
+                    if (table[boxPos - offset] == currentReachable && 
+                        (isPull ? table[boxPos - 2*offset] < BLOCKED :
+                            // dead cells only affect push moves
+                            (table[boxPos + offset] < BLOCKED && !level.table[boxPos + offset].has(Cell.DeadCell))))
+                    {
                         moves.Add(new Move { boxIndex = boxIdx, direction = (Direction)dir });
                     }
                 }
