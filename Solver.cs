@@ -1,8 +1,6 @@
 using System.Text;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 
@@ -27,7 +25,7 @@ namespace soko
             this.level = level;
         }
 
-        public async Task Solve() 
+        public Task Solve() 
         {
             forwardVisitedStates = new ConcurrentDictionary<State, CameFrom>();
             backwardVisitedStates = new ConcurrentDictionary<State, CameFrom>();
@@ -47,20 +45,10 @@ namespace soko
                 backwardVisitedStates.TryAdd(state, new CameFrom());
             }
 
-            var watch = new Stopwatch();
-            watch.Start();
-
-            await Task.WhenAny(new [] {
+            return Task.WhenAny(new [] {
                 Task.Run(SolveForward),
                 Task.Run(SolveReverse)
             });
-            
-            watch.Stop();
-
-            Console.WriteLine("Time: " + watch.Elapsed);
-
-            Console.WriteLine($"Forward states {forwardVisitedStates.Count}");
-            Console.WriteLine($"Backwards states {backwardVisitedStates.Count}");
         }
 
         private void SolveForward()
@@ -144,6 +132,9 @@ namespace soko
 
         public void PrintSolution()
         {
+            Console.WriteLine($"Forward states {forwardVisitedStates.Count}");
+            Console.WriteLine($"Backwards states {backwardVisitedStates.Count}");
+
             var forwardSteps = new List<CameFrom>();
             var state = commonState;
 

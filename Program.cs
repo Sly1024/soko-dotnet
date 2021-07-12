@@ -7,24 +7,41 @@ namespace soko
 {
     class Program
     {
+        static volatile bool finished = false;
+        static Stopwatch watch;
+
         static void Main(string[] args)
         {
             var level = Level.Parse(File.ReadAllText(args[0]));
             var solver = new Solver(level);
-            solver.Solve().Wait();
+            
+            watch = new Stopwatch();
+            watch.Start();
+
+            Task.WhenAll(new [] {
+                solver.Solve().ContinueWith((_) => { finished = true; }),
+                PrintStats()
+            }).Wait();
+
+            watch.Stop();
+            // Console.WriteLine("Time: " + watch.Elapsed);
+
             solver.PrintSolution();
-            PrintStatistics();
         }
 
-        private static void PrintStatistics() 
+        private static async Task PrintStats() 
         {
-            Console.WriteLine($"Private Mem: {Process.GetCurrentProcess().PrivateMemorySize64/(1<<20)} MB");
-            Console.WriteLine($"GC Mem: {GC.GetTotalMemory(false)/(1<<20)} MB");
-            Console.WriteLine($"GC Allocated: {GC.GetTotalAllocatedBytes()/(1<<20)} MB");
-            Console.WriteLine($"GC Gen0 Coll: {GC.CollectionCount(0)}");
-            Console.WriteLine($"GC Gen1 Coll: {GC.CollectionCount(1)}");
-            Console.WriteLine($"GC Gen2 Coll: {GC.CollectionCount(2)}");
+            while (!finished) {
+                await Task.Delay(500);
+                Console.Write("\r {5:h\\:mm\\:ss\\.f} Mem: {0} MB,  Alloc: {1} MB, GC: {2}/{3}/{4}",
+                    Process.GetCurrentProcess().PrivateMemorySize64/(1<<20),
+                    GC.GetTotalAllocatedBytes()/(1<<20),
+                    GC.CollectionCount(0),
+                    GC.CollectionCount(1),
+                    GC.CollectionCount(2),
+                    watch.Elapsed);
+            }
+            Console.WriteLine();
         }
-
     }
 }

@@ -29,7 +29,8 @@ namespace soko
         public static void FillBoundsCheck<T>(T[] table, int width, int startPos, Func<T, bool> isEmpty, T fillWith) {
             var queue = new Queue<int>();
             queue.Enqueue(startPos);
-
+            table[startPos] = fillWith;
+            
             while (queue.Count > 0) {
                 var pos = queue.Dequeue();
                 
