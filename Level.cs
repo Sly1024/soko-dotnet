@@ -29,13 +29,22 @@ namespace soko
         public int[] boxPositions;
         public int[] goalPositions;
 
+        public ulong[] boxZbits;
+        public ulong[] playerZbits;
+
+        public int[] dirOffset;
+
         public Level(Cell[] table, int width)
         {
             this.table = table;
             this.width = width;
+
+            dirOffset = new [] { -1, 1, -width, width };
+
             PreProcessTable();
             FillPerimeterWithWall();
             DetectDeadCells();
+            GenerateZobristBitstrings();
         }
 
         private void PreProcessTable()
@@ -146,6 +155,37 @@ namespace soko
                 FillWithWall(i * width);
                 FillWithWall(i * width + width - 1);
             }
+        }
+
+        private void GenerateZobristBitstrings()
+        {
+            var length = table.Length;
+            boxZbits = new ulong[length];
+            playerZbits = new ulong[length];
+            var rand = new Random(1024);
+
+            for (var i = 0; i < length; i++) if (table[i] != Cell.Wall) {
+                boxZbits[i] = Get64BitZobristString(rand);
+                playerZbits[i] = Get64BitZobristString(rand);
+            }
+        }
+
+        private ulong Get64BitZobristString(Random rand)
+        {
+            // Unfortunately rand.Next() returns an int32 but with only 31 random bits, so using two of these would
+            // get me 62 bits, and I would need to get 2 more random bits anyway, I decided to go with 4x16 bits.
+            var a = (ulong)rand.Next(1<<16);
+            var b = (ulong)rand.Next(1<<16);
+            var c = (ulong)rand.Next(1<<16);
+            var d = (ulong)rand.Next(1<<16);
+            return (a << 48) | (b << 32) | (c << 16) | d;
+        }
+
+        public ulong GetZHashForBoxes(int[] boxPositions)
+        {
+            ulong hash = 0;
+            foreach (var box in boxPositions) hash ^= boxZbits[box];
+            return hash;
         }
 
         public static Level Parse(string text) 

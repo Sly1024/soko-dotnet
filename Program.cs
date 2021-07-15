@@ -9,11 +9,12 @@ namespace soko
     {
         static volatile bool finished = false;
         static Stopwatch watch;
+        static Solver solver;
 
         static void Main(string[] args)
         {
             var level = Level.Parse(File.ReadAllText(args[0]));
-            var solver = new Solver(level);
+            solver = new Solver(level);
             
             watch = new Stopwatch();
             watch.Start();
@@ -24,22 +25,23 @@ namespace soko
             }).Wait();
 
             watch.Stop();
-            // Console.WriteLine("Time: " + watch.Elapsed);
+            Console.WriteLine("Time: " + watch.Elapsed);
 
-            solver.PrintSolution();
+            // solver.PrintSolution();
         }
 
         private static async Task PrintStats() 
         {
             while (!finished) {
                 await Task.Delay(500);
-                Console.Write("\r {5:h\\:mm\\:ss\\.f} Mem: {0} MB,  Alloc: {1} MB, GC: {2}/{3}/{4}",
+                Console.Write("\r {5:h\\:mm\\:ss\\.f} Mem: {0} MB,  Alloc: {1} MB, GC: {2}/{3}/{4}", /* BranchF: {6:0.00} */
                     Process.GetCurrentProcess().PrivateMemorySize64/(1<<20),
                     GC.GetTotalAllocatedBytes()/(1<<20),
                     GC.CollectionCount(0),
                     GC.CollectionCount(1),
                     GC.CollectionCount(2),
-                    watch.Elapsed);
+                    watch.Elapsed
+                    /* (double)solver.possibleMovesSum/solver.possibleMovesCnt */);
             }
             Console.WriteLine();
         }

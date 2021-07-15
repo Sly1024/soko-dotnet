@@ -70,7 +70,7 @@ Note: There's a bug, the demo0.sok (simplest level) has a one move solution and 
 the program runs into an error trying to index a dictionary with a null key. I'm not going to fix this, this is not the 
 final solution anyway.
 
-## Phase 4 - Dead cell detection
+## Phase 4 - Dead cell marking
 
 A "dead cell" is a cell on the board that results in a deadlock (cannot solve the level) when a box is pushed into it.
 The simplest example is a corner that is not a goal position. If a box is pushed into a corner, there is no way to move it
@@ -87,8 +87,8 @@ Example: dead cells are marked with an 'x'.
 ########       x - dead cell
 ```
 
-These cells can be detected once the level is loaded and we can prevent pushing a box into them by filtering out these in
-the `GetPossibleMoves` function. This only applies to *push moves*. A pull move can never move a box into a dead cell.
+These cells can be detected and marked once the level is loaded and we can prevent pushing a box into them by filtering out 
+these in the `GetPossibleMoves` function. This only applies to *push moves*. A pull move can never move a box into a dead cell.
 
 Note: Even though dead cell detection only filters out moves/states from a forward solve, it still affects the dual
 forward + backward solve because the two threads reach the common state sooner with less visited states on both sides.

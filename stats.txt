@@ -132,3 +132,10 @@ GC Gen0 Coll: 1275
 GC Gen1 Coll: 492
 GC Gen2 Coll: 10
 
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
+ 0:00:37.1 Mem: 104 MB,  Alloc: 16390 MB, GC: 10859/11/9
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
+ 0:00:14.2 Mem: 127 MB,  Alloc: 2624 MB, GC: 1656/9/9
+Time: 00:00:14.2586940
