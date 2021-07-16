@@ -139,3 +139,8 @@ PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
 PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
  0:00:14.2 Mem: 127 MB,  Alloc: 2624 MB, GC: 1656/9/9
 Time: 00:00:14.2586940
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
+move: 2, hashstate: 18 ptr: 8
+ 0:00:13.1 Mem: 93 MB,  Alloc: 2180 MB, GC: 1374/6/6
+Time: 00:00:13.1904907

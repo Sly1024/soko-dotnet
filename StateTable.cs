@@ -1,7 +1,9 @@
 using System;
+using System.Runtime.InteropServices;
 
 namespace soko 
 {
+    [StructLayout(LayoutKind.Sequential, Pack = 2)]
     public struct HashState {
         public ulong zHash;
         public ulong prevState;
@@ -24,21 +26,27 @@ namespace soko
             states = new HashState[FindPrimeAbove(minimumSize)];
         }
 
-        public void Add(HashState state)
+        public bool TryAdd(HashState state)
         {
-            InternalAdd(state);
-            ++count;
-            CheckSaturation();
+            if (InternalAdd(state)) {
+                ++count;
+                CheckSaturation();
+                return true;
+            }
+            return false;
         }
 
-        private void InternalAdd(HashState state)
+        private bool InternalAdd(HashState state)
         {
             int size = states.Length;
-            int idx = (int)(state.zHash % (ulong)size);
+            ulong stateZhash = state.zHash;
+            int idx = (int)(stateZhash % (ulong)size);
             while (states[idx].zHash != 0) {
+                if (states[idx].zHash == stateZhash) return false;
                 if (++idx == size) idx = 0;
             }
             states[idx] = state;
+            return true;
         }
 
         private void CheckSaturation()
@@ -62,7 +70,8 @@ namespace soko
         {
             int size = states.Length;
             int idx = (int)(zHash % (ulong)size);
-            while (states[idx].zHash != zHash && states[idx].zHash != 0) {
+            ulong sZhash;
+            while ((sZhash = states[idx].zHash) != zHash && sZhash != 0) {
                 if (++idx == size) idx = 0;
             }
             return states[idx];

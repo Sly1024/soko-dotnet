@@ -13,8 +13,14 @@ namespace soko
 
         public ushort encoded;
 
-        public int BoxPos { get => encoded >> 2; }
+        public int BoxPos { get => (encoded >> 2) & ((1<<13) - 1); }
         public int Direction { get => encoded & 3; }
+        public bool IsLast { get => encoded >> 15 == 1; }
+
+        public void SetLastBit()
+        {
+            encoded |= 1 << 15;
+        }
 
         public override string ToString()
         {

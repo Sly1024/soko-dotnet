@@ -7,7 +7,7 @@ namespace soko
     public class State
     {
         Level level;
-        int playerPosition;
+        public int playerPosition;
         HashSet<int> boxPositions;
         ulong boxZhash;
 
@@ -87,11 +87,13 @@ namespace soko
             reachableValid = true;
         }
 
-        public List<Move> GetPossibleMoves(bool isPull)
+        public int GetPossibleMoves(DynamicList<Move> moves, bool isPull = false)
         {
             if (!reachableValid) CalculatePlayerReachableMap();
 
-            var moves = new List<Move>();
+            //var moves = new List<Move>();
+            var mIdx = moves.idx;
+
             foreach (var boxPos in boxPositions)
             {
                 for (var dir = 0; dir < 4; dir++)
@@ -106,7 +108,13 @@ namespace soko
                     }
                 }
             }
-            return moves;
+
+            if (moves.idx == mIdx) return -1; else {
+                moves.items[moves.idx-1].SetLastBit();
+                return mIdx;
+            }
+            // return moves;
+            
         }
 
         public void ApplyPushMove(Move move)
@@ -160,38 +168,38 @@ namespace soko
         //     return reachableTable[position] == currentReachable;
         // }
 
-        // internal int GetPlayerPositionFor(Move move) {
-        //     return boxPositions[move.boxIdx] - GetOffset(move.direction, level.width);
-        // }
+        internal int GetPlayerPositionFor(Move move) {
+            return move.BoxPos - level.dirOffset[move.Direction];
+        }
 
-        // internal string FindPlayerPath(int playerPos, Move move)
-        // {
-        //     return FindPlayerPath(playerPos, GetPlayerPositionFor(move));
-        // }
+        internal string FindPlayerPath(int playerPos, Move move)
+        {
+            return FindPlayerPath(playerPos, GetPlayerPositionFor(move));
+        }
 
-        // internal string FindPlayerPath(int playerPos, int targetPos)
-        // {
-        //     var width = level.width;
-        //     FillTable();
-        //     reachableTable[targetPos] = 1;
+        internal string FindPlayerPath(int playerPos, int targetPos)
+        {
+            var width = level.width;
+            ClearReachableTable();
+            reachableTable[targetPos] = 1;
 
-        //     int distance = 0;
+            int distance = 0;
 
-        //     Filler.Fill(reachableTable, width, targetPos, 
-        //         pos => { distance = reachableTable[pos] + 1; return pos == playerPos; },
-        //         (value, pos) => value == 0 ? distance : -1
-        //     );
+            Filler.Fill(reachableTable, width, targetPos, 
+                pos => { distance = reachableTable[pos] + 1; return pos == playerPos; },
+                (value, pos) => value == 0 ? distance : -1
+            );
 
-        //     var sb = new StringBuilder();
-        //     while (playerPos != targetPos) {
-        //         var dist = reachableTable[playerPos] - 1;
-        //         if (reachableTable[playerPos + 1] == dist) { playerPos++; sb.Append('r'); }
-        //         else if (reachableTable[playerPos - 1] == dist) { playerPos--; sb.Append('l'); }
-        //         else if (reachableTable[playerPos + width] == dist) { playerPos += width; sb.Append('d'); }
-        //         else if (reachableTable[playerPos - width] == dist) { playerPos -= width; sb.Append('u'); }
-        //     }
-        //     return sb.ToString();
-        // }
+            var sb = new StringBuilder();
+            while (playerPos != targetPos) {
+                var dist = reachableTable[playerPos] - 1;
+                if (reachableTable[playerPos + 1] == dist) { playerPos++; sb.Append('r'); }
+                else if (reachableTable[playerPos - 1] == dist) { playerPos--; sb.Append('l'); }
+                else if (reachableTable[playerPos + width] == dist) { playerPos += width; sb.Append('d'); }
+                else if (reachableTable[playerPos - width] == dist) { playerPos -= width; sb.Append('u'); }
+            }
+            return sb.ToString();
+        }
 
     }
 }
