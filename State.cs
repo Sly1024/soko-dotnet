@@ -87,12 +87,12 @@ namespace soko
             reachableValid = true;
         }
 
-        public int GetPossibleMoves(DynamicList<Move> moves, bool isPull = false)
+        public int GetPossibleMoves(MoveRanges moves, bool isPull = false)
         {
             if (!reachableValid) CalculatePlayerReachableMap();
 
             //var moves = new List<Move>();
-            var mIdx = moves.idx;
+            moves.StartAddRange();
 
             foreach (var boxPos in boxPositions)
             {
@@ -104,17 +104,13 @@ namespace soko
                             // dead cells only affect push moves
                             (reachableTable[boxPos + offset] < BLOCKED && !level.table[boxPos + offset].has(Cell.DeadCell))))
                     {
-                        moves.Add((boxPos, dir));
+                        moves.AddRangeItem((boxPos, dir));
                     }
                 }
             }
 
-            if (moves.idx == mIdx) return -1; else {
-                moves.items[moves.idx-1].SetLastBit();
-                return mIdx;
-            }
+            return moves.FinishAddRange();
             // return moves;
-            
         }
 
         public void ApplyPushMove(Move move)

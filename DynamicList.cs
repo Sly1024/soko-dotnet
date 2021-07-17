@@ -13,16 +13,27 @@ namespace soko
 
         public void Add(T state) 
         {
-            EnsureCapacity(idx);
+            EnsureCapacity(idx + 1);
             items[idx++] = state;
         }
 
-        private void EnsureCapacity(int size)
+        public void EnsureCapacity(int size)
         {
-            if (items.Length <= size) {
-                var newItems = new T[size+size];
-                Array.Copy(items, newItems, size);
+            if (items.Length < size) {
+                var newItems = new T[Math.Max(items.Length*3/2, size)];
+                Array.Copy(items, newItems, idx);
                 items = newItems;
+            }
+        }
+
+        public T this[int idx] {
+            get {
+                EnsureCapacity(idx+1);
+                return items[idx];
+            }
+            set {
+                EnsureCapacity(idx+1);
+                items[idx] = value;
             }
         }
     }

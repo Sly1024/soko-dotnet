@@ -18,7 +18,7 @@ namespace soko
         public StateTable forwardVisitedStates;
         public StateTable backwardVisitedStates;
 
-        public DynamicList<Move> moves = new DynamicList<Move>(1000);
+        public MoveRanges moves = new MoveRanges(1000);
 
         public Solver(Level level)
         {
@@ -75,7 +75,6 @@ namespace soko
             while (statesToProcess.Count > 0) {
                 var toProcess = statesToProcess.Dequeue();
                 ulong stateZHash = toProcess.state;
-                var moveIdx = toProcess.moveIdx;
 
                 MoveStateInto(fullState, stateZHash, forwardVisitedStates);
 
@@ -83,10 +82,8 @@ namespace soko
                 // fullState.PrintTable();
 
                 //fullState.GetPossibleMoves(possibleMoves, false);
-                // foreach (var move in moves) {
-                while (true) {
-                    var move = moves.items[moveIdx++];
-
+                foreach (var move in moves.GetRangeAt(toProcess.moveIdx))
+                {
                     fullState.ApplyPushMove(move);
 
                     // if (commonState != null) return;
@@ -105,8 +102,6 @@ namespace soko
                     }
 
                     fullState.ApplyPullMove(move);
-
-                    if (move.IsLast) break;
                 }
             }
         }
@@ -226,7 +221,7 @@ namespace soko
 
         public void PrintSolution()
         {
-            Console.WriteLine($"{moves.items.Length} moves generated");
+            Console.WriteLine($"{moves.idx}/{moves.items.Length} moves generated");
             var forwardSteps = new List<HashState>();
             var state = commonState;
 
