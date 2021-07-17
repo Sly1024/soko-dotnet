@@ -47,7 +47,7 @@ namespace soko
             return freeIdx;
         }
 
-        private void RemoveRange(int start, int end)
+        public void RemoveRange(int start, int end)
         {
             var size = end - start;
             if (size == 1) size = 2;
