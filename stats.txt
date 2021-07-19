@@ -144,3 +144,21 @@ PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
 move: 2, hashstate: 18 ptr: 8
  0:00:13.1 Mem: 93 MB,  Alloc: 2180 MB, GC: 1374/6/6
 Time: 00:00:13.1904907
+
+New fill algorithm (Fill2)
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
+move: 2, hashstate: 18 ptr: 8
+ 0:00:06.6 Mem/Alloc: 102 / 939 MB, GC: 570/5/4 States: 6 / 1531708
+Time: 00:00:06.6511916
+626440/656709 moves generated
+ullluuuLUluurDldlDDulldddrRRRRRlllllluuurrdDuuuruulDDDDulldddrRRRllddrrrruuRRRRRRllllllddlllluurrRRlllllluuurrdDuulldddrRRRllddrrrruuRRRRRdrUllllllddlllluurrRRRRRRRuRDldRRluuRlldlllllluuulLuurDllDlldddrrrrruuuLulldDDuuurrdLulDDulldddrRRRRuuullldDuulldddrRRluuurrrdddRddlllluurRllddrrrruuRRRRRdrUllllllddlllluurrRRRRRRRuRDldRlulllllllllllulldRRRRRRllddrrrruurrrrrrRlllllllddlllluurrRRRRRRRR
+97 pushes, 292 moves
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_17.sok
+move: 2, hashstate: 18 ptr: 8
+ 0:03:12.4 Mem/Alloc: 1249 / 22069 MB, GC: 13003/25/10 States: 771 / 36609705 [coll: 0 %]
+Time: 00:03:12.4103039
+18726792/25246072 moves generated
+luurRdRdddrrruuLuRdddllluuuRldddrrruulLulDulullddrRurruLuuurrrrrrrrrdddddlluRdrUUUUruLLLdlUllllllddddldlluurRdrUUUluRRRRRRRRRurDDDDrdLuuuullllllllldddrddrruLLrrdrruLLdlluuluuurrrrrrUUddrrrdddddlluRdrUUUUruLLLdlUUldllllldddrddrruLdlLUUUUluRRRRRRRRRurDDDDrdLuuuullllllllldddddrruLuluuurrrrruuuurrdLLddrUddrrrdddddlluRdrUUUUruLLLdlUUldllllldddrddlUUUUluRRRRRRRRRurDDDDrdLuuuulllluuuLLLrrrurrdLLLLdlUruLLrrdrrddrUluurrdLLLLdlUruLrdrrrdddrrrdddddlluRdrUUUUruLLLdlUUUluurrdLLLLulDrdLLruLrrrrdddllllldddrdrrdddlllUUUlullddrRurUrdrrdddllluUruulUUluRRRRRRRRRurDDDDrdLdlluRdrUUUUruLLLdlUlllllldddrddlUUUUluRRRRRRRRRurDDDDrdLuuuulllUUddrrrdddddlluRdrUUUUruLLLdlUUluuurrdLLddrUluLLLrrrurrdLLLLulDrdL
+213 pushes, 474 moves

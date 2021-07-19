@@ -45,6 +45,9 @@ namespace soko
         }
         
         // https://en.wikipedia.org/wiki/Quadratic_probing - with alternating signs
+        // square numbers:0, 1, 4, 9, 16, 25, 36, 49, 64, ... (quadOffset)
+        // difference    : 1  3, 5, 7,  9,  11, 13, 15, ... (quadInc)
+        // diff. of diff.:  2, 2,  2,  2,  2,  2, 2, ...
         private int FindState(ulong zHash)
         {
             int size = states.Length;
@@ -53,6 +56,7 @@ namespace soko
             int quadOffset = 0;
             int idx = startIdx;
             ref HashState state = ref states[startIdx];
+            // unrolled the loop to 2 iterations to deal with alternating signs
             while (state.zHash != 0 && state.zHash != zHash) {
                 quadOffset += quadInc;
                 quadInc += 2;

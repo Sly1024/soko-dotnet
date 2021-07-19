@@ -30,8 +30,8 @@ namespace soko
             sourceAncestors = new DynamicList<HashState>(100);
             targetAncestors = new DynamicList<HashState>(100);
 
-            forwardVisitedStates = new StateTable(1<<20);
-            backwardVisitedStates = new StateTable(1<<20);
+            forwardVisitedStates = new StateTable(1<<17);
+            backwardVisitedStates = new StateTable(1<<17);
 
             var state = new State(level, level.boxPositions, level.playerPosition);
             
@@ -70,7 +70,7 @@ namespace soko
         private void SolveForward()
         {
             statesToProcess = new Queue<ToProcess>();
-            statesToProcess.Enqueue(new ToProcess{ state = startState, moveIdx = fullState.GetPossibleMoves(moves, false) });
+            statesToProcess.Enqueue(new ToProcess{ state = startState, moveIdx = fullState.GetPossiblePushMoves(moves) });
 
             while (statesToProcess.Count > 0) {
                 var toProcess = statesToProcess.Dequeue();
@@ -99,7 +99,7 @@ namespace soko
                             commonState = newZHash;
                             return;
                         }
-                        var moveIdx2 = fullState.GetPossibleMoves(moves);
+                        var moveIdx2 = fullState.GetPossiblePushMoves(moves);
                         if (moveIdx2 >= 0) {
                             statesToProcess.Enqueue(new ToProcess { state = newZHash, moveIdx = moveIdx2 });
                         }

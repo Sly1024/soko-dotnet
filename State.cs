@@ -23,13 +23,15 @@ namespace soko
         public State(Level level, int[] initialBoxPositions, int initialPlayerPosition)
         {
             this.level = level;
-            boxPositions = new HashSet<int>(initialBoxPositions);
+            boxPositions = new HashSet<int>(initialBoxPositions.Length*3);
+            foreach (var box in initialBoxPositions) boxPositions.Add(box);
+
             boxZhash = level.GetZHashForBoxes(initialBoxPositions);
             playerPosition = initialPlayerPosition;
-            FillTable(initialBoxPositions);
+            FillTable();
         }
 
-        private void FillTable(int[] boxPositions)
+        private void FillTable()
         {
             reachableTable = new int[level.table.Length];
             for (var i = 0; i < reachableTable.Length; i++) {
@@ -44,12 +46,12 @@ namespace soko
         // for debugging
         internal void PrintTable()
         {
-            var sb = new StringBuilder();
+            var sb = new StringBuilder("\n");
             for (var i = 0; i < reachableTable.Length; i++) {
                 sb.Append(reachableTable[i] switch {
                     WALL => "#",
                     BOX => "$",
-                    _ => " "
+                    _ => reachableTable[i] == currentReachable ? "." : " "
                 });
                 sb.Append(" ");
                 if (i % level.width == level.width -1) sb.Append("\n");
@@ -61,8 +63,7 @@ namespace soko
         private void ClearReachableTable() 
         {
             for (var i = 0; i < reachableTable.Length; i++) {
-                var value = reachableTable[i];
-                if (value != 0 && value < BLOCKED) reachableTable[i] = 0;
+                if (reachableTable[i] < BLOCKED) reachableTable[i] = 0;
             }
         }
 
@@ -76,18 +77,20 @@ namespace soko
                 currentReachable = 1;
             }
 
-            reachableTable[playerPosition] = currentReachable;
+            // reachableTable[playerPosition] = currentReachable;
+            // Filler.Fill(reachableTable, width, playerPosition, 
+            //     // update player position to be the lowest value
+            //     pos => { if (pos < playerPosition) playerPosition = pos; return false; },
+            //     (value, idx) => (value < currentReachable) ? currentReachable : -1
+            // );
 
-            Filler.Fill(reachableTable, width, playerPosition, 
-                // update player position to be the lowest value
-                pos => { if (pos < playerPosition) playerPosition = pos; return false; },
-                (value, idx) => (value != currentReachable && value < BLOCKED) ? currentReachable : -1
-            );
+            playerPosition = Filler.Fill2(reachableTable, width, playerPosition, currentReachable);
+            // playerPosition = Filler.Fill4(reachableTable, width, playerPosition, currentReachable);
 
             reachableValid = true;
         }
 
-        public int GetPossibleMoves(MoveRanges moves, bool isPull = false)
+        public int GetPossiblePushMoves(MoveRanges moves)
         {
             if (!reachableValid) CalculatePlayerReachableMap();
 
@@ -100,9 +103,8 @@ namespace soko
                 {
                     var offset = level.dirOffset[dir];
                     if (reachableTable[boxPos - offset] == currentReachable && 
-                        (isPull ? reachableTable[boxPos - 2*offset] < BLOCKED :
                             // dead cells only affect push moves
-                            (reachableTable[boxPos + offset] < BLOCKED && !level.table[boxPos + offset].has(Cell.DeadCell))))
+                            (reachableTable[boxPos + offset] < BLOCKED && !level.table[boxPos + offset].has(Cell.DeadCell)))
                     {
                         moves.AddRangeItem((boxPos, dir));
                     }
@@ -112,6 +114,30 @@ namespace soko
             return moves.FinishAddRange();
             // return moves;
         }
+        
+        // public int GetPossiblePullMoves(MoveRanges moves)
+        // {
+        //     if (!reachableValid) CalculatePlayerReachableMap();
+
+        //     //var moves = new List<Move>();
+        //     moves.StartAddRange();
+
+        //     foreach (var boxPos in boxPositions)
+        //     {
+        //         for (var dir = 0; dir < 4; dir++)
+        //         {
+        //             var offset = level.dirOffset[dir];
+        //             if (reachableTable[boxPos - offset] == currentReachable && 
+        //                 reachableTable[boxPos - 2*offset] < BLOCKED)
+        //             {
+        //                 moves.AddRangeItem((boxPos, dir));
+        //             }
+        //         }
+        //     }
+
+        //     return moves.FinishAddRange();
+        //     // return moves;
+        // }
 
         public void ApplyPushMove(Move move)
         {
