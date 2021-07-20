@@ -2,11 +2,13 @@
 [✓] Reverse solving
 [✓] Forward+Reverse solving
 [✓] Dead cell detection
+[✓] Zobrist hash
+[✓] Don't keep the "table" in state - there's only one State object now, other "states" are stored as a ulong zHash
+[✓] More efficient GeneratePlayerReachable (flood-fill) - tried a scanline method, the simple 4-way with a Stack is still fast enough
+[ ] Maintain PossibleMoves, insted of generating it
+[ ] Maintain PlayerReachable table if possible
 [ ] Deadlock detection
-[ ] Don't keep the "table" in state
-[ ] More efficient GeneratePlayerReachable (flood-fill)
 [ ] Choosing next state based on Heuristic distance
-[ ] Zobrist hash
 [ ] Tunnel detection
 [ ] Corral detection
 [ ] Deadlock patterns

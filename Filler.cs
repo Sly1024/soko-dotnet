@@ -50,7 +50,7 @@ namespace soko
             return startPos;
         }
 
-        public static int Fill4(int[] table, int width, int startPos, int reachable) {
+        public static int Fill3(int[] table, int width, int startPos, int reachable) {
 
             table[startPos] = reachable;
             var left = startPos-1;
