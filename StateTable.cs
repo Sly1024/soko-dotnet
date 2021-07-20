@@ -38,7 +38,7 @@ namespace soko
         {
             if (InternalAdd(state)) {
                 ++count;
-                CheckSaturation();
+                CheckLoadFactor();
                 return true;
             }
             return false;
@@ -84,7 +84,7 @@ namespace soko
             return true;
         }
 
-        private void CheckSaturation()
+        private void CheckLoadFactor()
         {
             int size = states.Length;
             // above 75% 

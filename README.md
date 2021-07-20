@@ -92,3 +92,88 @@ these in the `GetPossibleMoves` function. This only applies to *push moves*. A p
 
 Note: Even though dead cell detection only filters out moves/states from a forward solve, it still affects the dual
 forward + backward solve because the two threads reach the common state sooner with less visited states on both sides.
+
+## Phase 5 - Zobrist hashes and some
+
+This is quite a big change since the last phase. I introduced Zobrist hashing for states, MoveRanges for more efficient storage 
+of move lists, improved the fill algorithm, and some logic to traverse the search tree without storing the states.
+
+### Zobrist Hashing
+You can read about this on [the Wikipedia page](https://en.wikipedia.org/wiki/Zobrist_hashing). In the `Level` class we
+pre-generate a 64bit random number (bitstring) for each position on the table that is empty - can be occupied by a box or the 
+player. We generate another table for the player. Basically the Zobrist hash for a state is the XOR of the values where the
+boxes are and where the normalized player position is. 
+
+Theoretically it's a hash function, so it is possible that two different states have the same Z-hash value, but we're going to
+ignore this for now. Essentially we can just use the Z-hash value to identify the state uniquely. 
+
+### StateTable
+I can't just use an ordinary HashTable or Dictionary, right? That would be no fun. And wasting memory. A Dictionary, in addition
+to the key and the value, it stores other pieces of information. The reference implementation of Dictionary&lt;TKey, TValue&gt; has 
+extra [hashCode and next filed in its Entry](https://referencesource.microsoft.com/#mscorlib/system/collections/generic/dictionary.cs,61).
+In addition it has a `buckets` array, which stores an int for each entry. In total that is 3x4 = 12 bytes extra for each entry.
+If I only want to store a small struct (18 bytes at the moment) but millions of it, then a Dictionary would waste a lot of memory.
+
+So I decided to do something about it. I implemented a hash table that stores my `HashState` (terrible name, I know) structs in
+an array, so there's no overhead for each entry. It uses the already present `zHash` as hash code and indexes the array with it.
+For collision resolution I use [quadratic probing with alternating signs](https://en.wikipedia.org/wiki/Quadratic_probing), 
+which should make sure the entries are not clustered together and with the extra condition that the size of the table is a prime
+congruent to 3 modulo 4 it is guaranteed that it will find an empty slot. 
+
+I limited the load factor to 75% to keep the performance up, and it grows by a factor of 1.75 when more items are added.
+
+Note: For the first original level, in phase 4, the solver needed ~1800MB RAM to store all the State objects, 
+with this new hash table, it only needs ~100MB.
+
+### Walking the Tree
+Since we store the visited states in a hash table and it also stores the previous state (from where we arrived to the current state)
+and the move that is needed to get to the state, we don't need to store the whole State object. The idea is that we only have 
+**one active state object** which represents the state we're processing. After generating the possible moves, we apply each move
+on our state, then we generate the Z-hash for that sate and store it in the `visitedStates` table. We can *undo* the move to get
+back to the previous state so we can use it to process the next move.
+
+When all moves are processed on the current state, we take the next state from the queue. Remember, it's just a Z-hash value, so
+we need to "move" our only state object into that state. Fortunately we can do that by finding a path in the `visitedStates` 
+table which stores our search tree. We know the Z-hash value for the current state and the one for the target state. We need to 
+walk up the "parent" chain from both states (current and target) and eventually we'll find a common node on the paths. We
+apply the steps in reverse (`ApplyPullMove`) when walking upward from the current state to the common node. Then
+we apply the steps forward when going down on the common -> target path. This is done by the `MoveStateInto` function.
+
+### MoveRanges
+First, I realized that when a state is reached by applying a move, we need to generate the Z-hash which requires the normalized 
+player position, so we `CalculatePlayerReachableMap` and it is a costly operation. Then we add the state to our `statesToProcess`
+queue and some time later we take that state out and need to generate the possible moves, which also needs to 
+`CalculatePlayerReachableMap` - so we calculate the same reachable map twice for each state.
+
+I had an idea that when we reach a state, we do have the reachable map, so we might as well generate the possible moves and store
+them together with the sate (Z-hash) in our queue, so when we take the state from the queue we already have the moves list.
+
+I am not sure if it is worth doing, however, because this increases the memory requirement and also we generate the possible 
+moves for states that we might never need to process - if we reach the solution, then all states in the `statesToProcess` 
+queue can be dropped without processing. I'll leave this in for now, the solving speed seems to be the same either way.
+
+I didn't want to store many List&lt;Move&gt; objects (possibly millions) when a move list could be as small as 2-3 moves, each
+of them a 2 byte struct, so that would need 3*2=6 bytes and a pointer to my List object is 8 bytes (with a x64 runtime).
+The `MoveRanges` class can store multiple lists in a single array. When we generate a moves list it allocates a range from its 
+underlying array and gives back the index. I didn't want to store the length of the list separately, so instead I sacrificed
+one bit from the 16bit `ushort` that the move is encoded into, to indicate whether it's the last one in the list. This way
+knowing the index where the range starts identifies the list, because we know when we reach the last move item.
+
+Now, in order to be able to free up ranges and reuse them I had to do a little bit of maintenance logic. I know it sounds like 
+I want to implement the Garbage Collector again, but my solution is more space efficient than allocating objects on the heap
+(and it's fun, shhh..). When a range is freed up I store an index to it in the `firstFree` array, which is indexed by the size
+of the range. Basically each size has a linked list starting at `firstFree[size]` and if there is a next range then its index
+is encoded in the first two move items (needed two, because it's only 16bits and the index can be bigger). This also means I
+can't allocte a 1-item range because I wouldn't be able to "reclaim" it, so the minimum size is 2.
+
+### Fill algorithm improvements
+I also wanted to improve the flood-fill algorithm which is used by `CalculatePlayerReachableMap`. I always knew that the naive
+4-way fill was inefficient and it's on a hot path, so optimizing it would speed up the program a lot. 
+
+I tried implementing a scanline fill, but surprisingly it was actually slower - maybe I'm doing it wrong? It's also possible
+that the sokoban levels I'm feeding it have very narrow pathways, like a maze, and the scanline fill is only better in
+cases where there are large empty spaces to fill.
+
+I settled with a slightly improved 4-way fill - inlined the testing condition, which performs well for now. I have plans to 
+reduce the use of flood-fill in the future.
+
