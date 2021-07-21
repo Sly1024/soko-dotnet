@@ -24,7 +24,7 @@ But if there is an opening that the box closes during the move, we need to recal
  ....  |  ...#  |  ...#
    ↓        ↓        ↓  
  .#?#  |  ...#  |  .#??
- .@$.  |  .@$ ?  |  .@$?
+ .@$.  |  .@$?  |  .@$?
  ....  |  ...#  |  ...#
  The box might block access to the cells marked with '?'.
 ```
@@ -73,3 +73,17 @@ Doing a (small) reachable search every time we push a box probably doesn't help.
 ```
 
 Need to fill closed areas first, then the opened ones (if both are present).
+```
+       123456
+#11#   21111#
+2$11
+2#1#
+      p123456
+#22#   12222# p2-open (p1!=p2 -> p1==p2)
+1$22          p345=222 -> 123 which is closed?
+1#2#
+      p123456
+#11#   11123#
+11$2
+1#3#
+```

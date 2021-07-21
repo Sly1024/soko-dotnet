@@ -115,5 +115,32 @@ namespace soko
                 if (isEmpty(table[pos])) { table[pos] = fillWith; queue.Enqueue(pos); }
             }
         }
+
+        public static void FillWith<T>(T[] table, int width, int position, T value) where T : IEquatable<T>
+        {
+            if (!table[position].Equals(value)) {
+                FillBoundsCheck(table, width, position, (cell) => !cell.Equals(value), value);
+            }
+        }
+
+        public static IEnumerable<int> GetPerimeterCells(int tableSize, int width)
+        {
+            for (var i = 0; i < width; i++) {
+                yield return i;
+                yield return tableSize - 1 - i;
+            }
+
+            for (var i = tableSize / width - 2; i > 0; i--) {
+                yield return i * width;
+                yield return i * width + width - 1;
+            }
+        }
+
+        public static void FillPerimeter<T>(T[] table, int width, T value) where T : IEquatable<T>
+        {
+            foreach (var cell in GetPerimeterCells(table.Length, width)) {
+                FillWith(table, width, cell, value);
+            }
+        }
     }
 }

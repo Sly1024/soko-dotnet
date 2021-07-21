@@ -26,6 +26,18 @@ namespace soko
             }
         }
 
+        public void Clear() 
+        {
+            idx = 0;
+        }
+
+        public void Truncate(int size)
+        {
+            idx = size;
+        }
+
+        public int Count { get => idx; }
+
         public T this[int idx] {
             get {
                 EnsureCapacity(idx+1);

@@ -9,6 +9,8 @@ namespace soko
     public struct Move
     {
         public static readonly string[] PushCodeForDirection = new [] { "L", "R", "U", "D"};
+
+        // converts (int, int) tuple to Move
         public static implicit operator Move((int boxPos, int dir) a) => new Move { encoded = (ushort)((a.boxPos << 2) | a.dir) };
 
         public ushort encoded;

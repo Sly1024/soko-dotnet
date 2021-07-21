@@ -4,26 +4,23 @@ using System.Linq;
 
 namespace soko
 {
-    public enum Cell
+    public static class Cell
     {
-        Empty = 0,
-        Wall = 1,
-        Goal = 2,
-        Box = 4,
-        Player = 8,
-        DeadCell = 16,
-    }
+        public const int Empty = 0;
+        public const int Wall = 1;
+        public const int Goal = 2;
+        public const int Box = 4;
+        public const int Player = 8;
+        public const int DeadCell = 16;
 
-    public static class CellExtensions 
-    {
-        public static bool has(this Cell cell, Cell value) {
+        public static bool has(this int cell, int value) {
             return (cell & value) != Cell.Empty;
         }
     }
 
     public class Level
     {
-        public Cell[] table;
+        public int[] table;
         public int width;
         public int playerPosition = -1;
         public int[] boxPositions;
@@ -34,7 +31,7 @@ namespace soko
 
         public int[] dirOffset;
 
-        public Level(Cell[] table, int width)
+        public Level(int[] table, int width)
         {
             this.table = table;
             this.width = width;
@@ -42,7 +39,7 @@ namespace soko
             dirOffset = new [] { -1, 1, -width, width };
 
             PreProcessTable();
-            FillPerimeterWithWall();
+            Filler.FillPerimeter(table, width, Cell.Wall);
             DetectDeadCells();
             GenerateZobristBitstrings();
         }
@@ -134,29 +131,6 @@ namespace soko
                 && (table[pos-width] | table[pos+width]).has(Cell.Wall);
         }
 
-        private void FillWithWall(int position) 
-        {
-            if (table[position] != Cell.Wall) {
-                Filler.FillBoundsCheck(table, width, position, 
-                    (value) => value != Cell.Wall,
-                    Cell.Wall
-                );
-            }
-        }
-
-        private void FillPerimeterWithWall()
-        {
-            for (var i = 0; i < width; i++) {
-                FillWithWall(i);
-                FillWithWall(table.Length - 1 - i);
-            }
-
-            for (var i = table.Length / width - 2; i > 0; i--) {
-                FillWithWall(i * width);
-                FillWithWall(i * width + width - 1);
-            }
-        }
-
         private void GenerateZobristBitstrings()
         {
             var length = table.Length;
@@ -192,7 +166,7 @@ namespace soko
         {
             var lines = text.Split(new []{ "\r", "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
             var width = lines.Max(line => line.Length);
-            var cells = new List<Cell>();
+            var cells = new List<int>();
 
             foreach (var line in lines)
             {
