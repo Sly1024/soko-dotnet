@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.InteropServices;
 
 namespace soko 
@@ -10,6 +11,8 @@ namespace soko
             public TEntryValue value;
         }
 
+        private int maxHop = 31;
+        private int[] hop;
         private HashEntry<TValue>[] entries;
         private int count = 0;
         private float loadFactor;
@@ -23,60 +26,129 @@ namespace soko
         public CompactHashTable(int minimumSize)
         {
             entries = new HashEntry<TValue>[FindPrimeAbove(minimumSize)];
+            hop = new int[entries.Length];
         }
 
-        public bool TryAdd(ulong key, TValue value)
+        public bool TryAdd(ulong zHash, TValue value)
         {
-            if (InternalAdd(key, value)) {
+            var addCode = InternalAdd(zHash, value);
+            if (addCode == 1) {
+                GrowTable();
+                addCode = InternalAdd(zHash, value);
+            }
+            if (addCode == 1) {
+                throw new IndexOutOfRangeException($"CompactHash table is fully full");
+            }
+            if (addCode == 0) {
                 ++count;
-                CheckLoadFactor();
                 return true;
             }
             return false;
         }
 
-        public bool ContainsKey(ulong key)
+        public bool ContainsKey(ulong zHash)
         {
-            return entries[FindEntry(key)].key != 0;
+            return Lookup(zHash) >= 0;
         }
 
-        public TValue this[ulong key] 
+        public TValue this[ulong zHash] 
         {
-            get => entries[FindEntry(key)].value;
+            get => entries[Lookup(zHash)].value;
         }
+
 
         // linear probing
-        private int FindEntry(ulong key)
+        private int Lookup(ulong zHash)
         {
             int size = entries.Length;
-            int idx = (int)(key % (ulong)size);
-            ref HashEntry<TValue> state = ref entries[idx];
+            int idx = (int)(zHash % (ulong)size);
+            if (hop[idx] == 0) return -1;
 
-            while (state.key != 0 && state.key != key) {
+            int maxIdx = (idx + maxHop) % size;
+            // linear search
+            ref HashEntry<TValue> state = ref entries[idx];
+            while (idx != maxIdx && state.key != zHash) {
                 if (++idx == size) idx = 0;
                 state = ref entries[idx];
             }
-            return idx;
+
+            return idx == maxIdx ? -1 : idx;
         }
 
-
-        private bool InternalAdd(ulong key, TValue value)
-        {
-            int idx = FindEntry(key);
-            if (entries[idx].key == key) return false;
-            entries[idx] = new HashEntry<TValue> { key = key, value = value };
-            return true;
-        }
-
-        private void CheckLoadFactor()
+        // returns: 
+        // -1 = already have key
+        // 0 = OK, added
+        // 1 = need to grow tables
+        private int InternalAdd(ulong key, TValue value)
         {
             int size = entries.Length;
-            if (count > size * loadFactor) {
-                var oldEntries = entries;
-                entries = new HashEntry<TValue>[FindPrimeAbove(size * 7 / 4)];   // 1.75x
+            int bucket = (int)(key % (ulong)size);
 
-                foreach (var item in oldEntries) {
-                    InternalAdd(item.key, item.value);
+            if (hop[bucket] == (1 << maxHop) - 1) {
+                // this bucket neighborhood is full
+                return 1;
+            }
+
+            int idx = bucket;
+            // linear search
+            ref HashEntry<TValue> entry = ref entries[idx];
+            while (entry.key != 0 && entry.key != key) {
+                if (++idx == size) idx = 0;
+                entry = ref entries[idx];
+            }
+            if (entry.key != 0) return -1;
+
+            // now idx is the empty slot
+            while ((idx - bucket + size) % size >= maxHop) {
+                var foundEntry = false;
+                for (var k = maxHop-1; !foundEntry && k > 0; --k) {
+                    // find an item that hashes to [idx - k] 
+                    var hopIdx = (idx - k + size) % size;
+                    var hopBits = hop[hopIdx];
+                    for (var b = 0; b < k; ++b) {
+                        // hopbits are in reverse order, LSB is for the first index in the neighborhood
+                        if ((hopBits & (1 << b)) != 0) {
+                            // found an item we can move
+                            var newIdx = (idx - k + b + size) % size;
+                            entries[idx] = entries[newIdx];
+                            idx = newIdx;
+
+                            // move the bit in hopBits
+                            hop[hopIdx] = hopBits & ~(1 << b) | (1 << k);
+                            foundEntry = true;
+                            break;
+                        }
+                    }
+                }
+                if (!foundEntry) {
+                    // in case we moved an item, and didn't clear out the new "empty" slot
+                    entries[idx].key = 0;
+                    return 1;
+                }
+            }
+
+            // finally we can store value at idx
+            entries[idx] = new HashEntry<TValue> { key = key, value = value };
+
+            // and add the hop bit
+            hop[bucket] |= 1 << (idx - bucket);
+
+            return 0;
+        }
+
+        private void GrowTable()
+        {
+            // Console.WriteLine($"Growing table, ratio: {count * 100 / states.Length} %");
+
+            var oldEntries = entries;
+            entries = new HashEntry<TValue>[FindPrimeAbove(oldEntries.Length * 7 / 4)];   // 1.75x
+            hop = new int[entries.Length];
+
+            foreach (var item in oldEntries) {
+                if (item.key != 0) {
+                    if (InternalAdd(item.key, item.value) == 1) {
+                        throw new Exception("Ooops, need to grow the table again?");
+                    }
                 }
             }
         }
