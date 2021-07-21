@@ -1,11 +1,20 @@
 using System.Text;
 using System;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 
 namespace soko
 {
+    // using StateTable = System.Collections.Generic.Dictionary<ulong, soko.HashState>;
+
+    [StructLayout(LayoutKind.Sequential, Pack = 2)]
+    public struct HashState {
+        public ulong zHash;
+        public Move move;
+        // converts a (ulong, Move) tuple to HashState
+        public static implicit operator HashState((ulong z, Move m) tuple) => new HashState { zHash = tuple.z, move = tuple.m };
+    }
     public class Solver
     {
         private Level level;
@@ -15,8 +24,8 @@ namespace soko
 
         private State fullState;
 
-        public StateTable forwardVisitedStates;
-        public StateTable backwardVisitedStates;
+        public StateTable<HashState> forwardVisitedStates;
+        public StateTable<HashState> backwardVisitedStates;
 
         public MoveRanges moves = new MoveRanges(1000);
 
@@ -30,13 +39,13 @@ namespace soko
             sourceAncestors = new DynamicList<HashState>(100);
             targetAncestors = new DynamicList<HashState>(100);
 
-            forwardVisitedStates = new StateTable(1<<17);
-            backwardVisitedStates = new StateTable(1<<17);
+            forwardVisitedStates = new StateTable<HashState>(1<<17);
+            backwardVisitedStates = new StateTable<HashState>(1<<17);
 
             var state = new State(level, level.boxPositions, level.playerPosition);
             
             startState = state.GetZHash();
-            forwardVisitedStates.TryAdd(new HashState { zHash = startState });
+            forwardVisitedStates.TryAdd(startState, new HashState());
 
             fullState = state;
 
@@ -47,7 +56,7 @@ namespace soko
             {
                 var endState = new State(level, level.goalPositions, endPlayerPos);
                 endStates.Add(endState.GetZHash());
-                backwardVisitedStates.TryAdd(new HashState { zHash = endState.GetZHash() });
+                backwardVisitedStates.TryAdd(endState.GetZHash(), new HashState());
             }
 
             return Task.WhenAny(new [] {
@@ -94,8 +103,8 @@ namespace soko
 
                     var newZHash = fullState.GetZHash();
 
-                    if (forwardVisitedStates.TryAdd(new HashState { zHash = newZHash, prevState = stateZHash, move = move })) {
-                        if (backwardVisitedStates.GetState(newZHash).zHash != 0) {
+                    if (forwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
+                        if (backwardVisitedStates.ContainsKey(newZHash)) {
                             commonState = newZHash;
                             return;
                         }
@@ -123,49 +132,51 @@ namespace soko
         // sourceAncestors: [6, 5], targetAncestors: [2, 3, 5]
         // we exclude the common state (5) from both
         // 
-        private void MoveStateInto(State state, ulong targetZhash, StateTable visitedStates)
+        private void MoveStateInto(State state, ulong targetZhash, StateTable<HashState> visitedStates)
         {
             var sourceZHash = state.GetZHash();
             if (sourceZHash == targetZhash) return;
 
-            sourceAncestors.idx = 0;
-            targetAncestors.idx = 0;
+            sourceAncestors.Clear();
+            targetAncestors.Clear();
 
-            var sourceState = visitedStates.GetState(sourceZHash);
-            sourceAncestors.Add(sourceState);
-            var targetState = visitedStates.GetState(targetZhash);
-            targetAncestors.Add(targetState);
+            var sourceState = visitedStates[sourceZHash];
+            sourceAncestors.Add((sourceZHash, sourceState.move));
+            var targetState = visitedStates[targetZhash];
+            targetAncestors.Add((targetZhash, targetState.move));
 
             while (true) {
-                sourceState = visitedStates.GetState(sourceState.prevState);
-                if (sourceState.zHash != 0) {
-                    var srcInTarget = targetAncestors.FindZhash(sourceState.zHash);
+                var sourcePrevZ = sourceState.zHash; 
+                if (sourcePrevZ != 0) {
+                    var srcInTarget = targetAncestors.FindZhash(sourcePrevZ);
                     if (srcInTarget >= 0) {
                         // ignore items in targetAncestors after sourceState
-                        targetAncestors.idx = srcInTarget;
+                        targetAncestors.Truncate(srcInTarget);
                         break;
                     }
-                    sourceAncestors.Add(sourceState);
+                    sourceState = visitedStates[sourcePrevZ];
+                    sourceAncestors.Add((sourcePrevZ, sourceState.move));
                 }
 
-                targetState = visitedStates.GetState(targetState.prevState);
-                if (targetState.zHash != 0) {
-                    var targetInSrc = sourceAncestors.FindZhash(targetState.zHash);
+                var targetPrevZ = targetState.zHash;
+                if (targetPrevZ != 0) {
+                    var targetInSrc = sourceAncestors.FindZhash(targetPrevZ);
                     if (targetInSrc >= 0) {
                         // ignore items in sourceAncestors after targetState
-                        sourceAncestors.idx = targetInSrc;
+                        sourceAncestors.Truncate(targetInSrc);
                         break;
                     }
-                    targetAncestors.Add(targetState);
+                    targetState = visitedStates[targetPrevZ];
+                    targetAncestors.Add((targetPrevZ, targetState.move));
                 }
             }
             
             // walk up the tree from the source to the common ancestor node
-            for (var i = 0; i < sourceAncestors.idx; i++) {
+            for (var i = 0; i < sourceAncestors.Count; i++) {
                 state.ApplyPullMove(sourceAncestors.items[i].move);
             }
 
-            for (var i = targetAncestors.idx - 1; i >= 0; i--) {
+            for (var i = targetAncestors.Count - 1; i >= 0; i--) {
                 state.ApplyPushMove(targetAncestors.items[i].move);
             }
         }
@@ -227,13 +238,14 @@ namespace soko
         public void PrintSolution()
         {
             Console.WriteLine($"{moves.idx}/{moves.items.Length} moves generated");
+
             var forwardSteps = new List<HashState>();
             var state = commonState;
 
             while (state != startState) {
-                var fromState = forwardVisitedStates.GetState(state);
+                var fromState = forwardVisitedStates[state];
                 forwardSteps.Add(fromState);
-                state = fromState.prevState;
+                state = fromState.zHash;
             }
 
             // var backwardSteps = new List<CameFrom>();
