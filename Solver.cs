@@ -6,9 +6,10 @@ using System.Runtime.InteropServices;
 
 namespace soko
 {
-    // using StateTable = System.Collections.Generic.Dictionary<ulong, soko.HashState>;
+    // using StateTable = Dictionary<ulong, HashState>;
+    using StateTable = CompactHashTable<HashState>;
 
-    [StructLayout(LayoutKind.Sequential, Pack = 2)]
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct HashState {
         public ulong zHash;
         public Move move;
@@ -24,8 +25,8 @@ namespace soko
 
         private State fullState;
 
-        public StateTable<HashState> forwardVisitedStates;
-        public StateTable<HashState> backwardVisitedStates;
+        public StateTable forwardVisitedStates;
+        public StateTable backwardVisitedStates;
 
         public MoveRanges moves = new MoveRanges(1000);
 
@@ -39,8 +40,8 @@ namespace soko
             sourceAncestors = new DynamicList<HashState>(100);
             targetAncestors = new DynamicList<HashState>(100);
 
-            forwardVisitedStates = new StateTable<HashState>(1<<17);
-            backwardVisitedStates = new StateTable<HashState>(1<<17);
+            forwardVisitedStates = new StateTable(1<<17, 0.7f);
+            backwardVisitedStates = new StateTable(1<<17, 0.7f);
 
             var state = new State(level, level.boxPositions, level.playerPosition);
             
@@ -132,7 +133,7 @@ namespace soko
         // sourceAncestors: [6, 5], targetAncestors: [2, 3, 5]
         // we exclude the common state (5) from both
         // 
-        private void MoveStateInto(State state, ulong targetZhash, StateTable<HashState> visitedStates)
+        private void MoveStateInto(State state, ulong targetZhash, StateTable visitedStates)
         {
             var sourceZHash = state.GetZHash();
             if (sourceZHash == targetZhash) return;

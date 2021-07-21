@@ -107,7 +107,7 @@ boxes are and where the normalized player position is.
 Theoretically it's a hash function, so it is possible that two different states have the same Z-hash value, but we're going to
 ignore this for now. Essentially we can just use the Z-hash value to identify the state uniquely. 
 
-### StateTable
+### CompactHashTable
 I can't just use an ordinary HashTable or Dictionary, right? That would be no fun. And wasting memory. A Dictionary, in addition
 to the key and the value, it stores other pieces of information. The reference implementation of Dictionary&lt;TKey, TValue&gt; has 
 extra [hashCode and next filed in its Entry](https://referencesource.microsoft.com/#mscorlib/system/collections/generic/dictionary.cs,61).
@@ -116,9 +116,12 @@ If I only want to store a small struct (18 bytes at the moment) but millions of 
 
 So I decided to do something about it. I implemented a hash table that stores my `HashState` (terrible name, I know) structs in
 an array, so there's no overhead for each entry. It uses the already present `zHash` as hash code and indexes the array with it.
-For collision resolution I use [quadratic probing with alternating signs](https://en.wikipedia.org/wiki/Quadratic_probing), 
-which should make sure the entries are not clustered together and with the extra condition that the size of the table is a prime
-congruent to 3 modulo 4 it is guaranteed that it will find an empty slot. 
+For collision resolution I tried [quadratic probing with alternating signs](https://en.wikipedia.org/wiki/Quadratic_probing), 
+but it is actually slower than linear probing. It allows for a higher load factor while maintaining the speed, but I'm using
+linear probing for now.
+
+I also tried [Hopscotch hashing](https://en.wikipedia.org/wiki/Hopscotch_hashing), which keeps its performance with very high load factors,
+but again, it is not much improvement, just complicates the code a lot.
 
 I limited the load factor to 75% to keep the performance up, and it grows by a factor of 1.75 when more items are added.
 
