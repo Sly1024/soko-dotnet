@@ -40,8 +40,8 @@ namespace soko
             sourceAncestors = new DynamicList<HashState>(100);
             targetAncestors = new DynamicList<HashState>(100);
 
-            forwardVisitedStates = new StateTable(1<<17, 0.7f);
-            backwardVisitedStates = new StateTable(1<<17, 0.7f);
+            forwardVisitedStates = new StateTable(1<<17);
+            backwardVisitedStates = new StateTable(1<<17);
 
             var state = new State(level, level.boxPositions, level.playerPosition);
             
@@ -91,8 +91,7 @@ namespace soko
                 // Console.WriteLine("Processing state...");
                 // fullState.PrintTable();
 
-                //fullState.GetPossibleMoves(possibleMoves, false);
-                // foreach (var move in moves.GetRangeAt(toProcess.moveIdx))
+
                 var mIdx = toProcess.moveIdx;
                 Move move;
                 do

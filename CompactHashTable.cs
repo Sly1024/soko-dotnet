@@ -16,13 +16,14 @@ namespace soko
 
         public int Count { get => count; }
 
-        public CompactHashTable(int minimumSize, float loadFactor = 0.75f): this(minimumSize) 
+        public CompactHashTable(int minimumSize, float loadFactor)
         {
             this.loadFactor = loadFactor;
-        }
-        public CompactHashTable(int minimumSize)
-        {
             entries = new HashEntry<TValue>[FindPrimeAbove(minimumSize)];
+        }
+
+        public CompactHashTable(int minimumSize): this(minimumSize, 0.75f)
+        {
         }
 
         public bool TryAdd(ulong key, TValue value)
@@ -101,8 +102,7 @@ namespace soko
         {
             // for now, just check the odd numbers
             if ((n & 1) == 0) n++;
-            // https://en.wikipedia.org/wiki/Quadratic_probing - need to be a prime congruent to 3 mod 4
-            while (n % 4 != 3 || !IsPrime(n)) n += 2;
+            while (!IsPrime(n)) n += 2;
             return n;
         }
 

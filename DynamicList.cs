@@ -17,6 +17,11 @@ namespace soko
             items[idx++] = state;
         }
 
+        public T Pop() 
+        {
+            return items[--idx];
+        }
+
         public void EnsureCapacity(int size)
         {
             if (items.Length < size) {

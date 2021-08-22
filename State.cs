@@ -77,15 +77,7 @@ namespace soko
                 currentReachable = 1;
             }
 
-            // reachableTable[playerPosition] = currentReachable;
-            // Filler.Fill(reachableTable, width, playerPosition, 
-            //     // update player position to be the lowest value
-            //     pos => { if (pos < playerPosition) playerPosition = pos; return false; },
-            //     (value, idx) => (value < currentReachable) ? currentReachable : -1
-            // );
-
             playerPosition = Filler.Fill2(reachableTable, width, playerPosition, currentReachable);
-            // playerPosition = Filler.Fill4(reachableTable, width, playerPosition, currentReachable);
 
             reachableValid = true;
         }
@@ -94,7 +86,6 @@ namespace soko
         {
             if (!reachableValid) CalculatePlayerReachableMap();
 
-            //var moves = new List<Move>();
             moves.StartAddRange();
 
             foreach (var boxPos in boxPositions)
@@ -112,7 +103,6 @@ namespace soko
             }
 
             return moves.FinishAddRange();
-            // return moves;
         }
         
         // public int GetPossiblePullMoves(MoveRanges moves)

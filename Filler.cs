@@ -27,10 +27,14 @@ namespace soko
             }
         }
 
+        private static DynamicList<int> fill2Stack = new DynamicList<int>(100);
+
         public static int Fill2(int[] table, int width, int startPos, int reachable) {
-            var list = new Stack<int>();
+            var list = fill2Stack;
+            list.Clear();
+
             table[startPos] = reachable;
-            list.Push(startPos);
+            list.Add(startPos);
 
             while (list.Count > 0) {
                 var pos = list.Pop();
@@ -45,7 +49,7 @@ namespace soko
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             void checkPosition(int pos)
             {
-                if (table[pos] < reachable) { table[pos] = reachable; list.Push(pos); }
+                if (table[pos] < reachable) { table[pos] = reachable; list.Add(pos); }
             }
             return startPos;
         }
