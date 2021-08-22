@@ -17,8 +17,7 @@ namespace soko
                 Console.WriteLine($"move: {sizeof(Move)}, hashstate: {sizeof(HashState)} ptr: {sizeof(IntPtr)}");
             }
 
-            // PlayerReachable pr = new PlayerReachable();
-            // pr.GenerateMoveTable();
+            PlayerReachable.GenerateMoveTable();
 
             var level = Level.Parse(File.ReadAllText(args[0]));
             solver = new Solver(level);

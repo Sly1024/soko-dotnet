@@ -18,6 +18,7 @@ namespace soko
 
         int[] reachableTable;
         int currentReachable = 0;
+        int maxReachable = 0;
         bool reachableValid = false;
 
         public State(Level level, int[] initialBoxPositions, int initialPlayerPosition)
@@ -29,6 +30,8 @@ namespace soko
             boxZhash = level.GetZHashForBoxes(initialBoxPositions);
             playerPosition = initialPlayerPosition;
             FillTable();
+            // CalculatePlayerReachableMap();
+            UpdatePlayerReachableMap();
         }
 
         private void FillTable()
@@ -65,34 +68,46 @@ namespace soko
             for (var i = 0; i < reachableTable.Length; i++) {
                 if (reachableTable[i] < BLOCKED) reachableTable[i] = 0;
             }
+            reachableValid = false;
         }
 
-        public void CalculatePlayerReachableMap()
+        // public void CalculatePlayerReachableMap()
+        // {
+        //     ClearReachableTable();
+        //     maxReachable = 0;
+
+        //     var width = level.width;
+
+        //     for (var i = 0; i < reachableTable.Length; i++) {
+        //         if (reachableTable[i] == 0) {
+        //             var minPos = Filler.Fill2(reachableTable, width, i, ++maxReachable);
+        //             if (reachableTable[playerPosition] == maxReachable) {
+        //                 playerPosition = minPos;
+        //                 currentReachable = maxReachable;
+        //             }
+        //         }
+        //     }
+        //     reachableValid = true;
+        // }
+        
+        public void UpdatePlayerReachableMap()
         {
-            var width = level.width;
-
-            // if currentReachable overflows
-            if (++currentReachable >= MAX_REACHABLE) {
-                ClearReachableTable();
-                currentReachable = 1;
-            }
-
-            // reachableTable[playerPosition] = currentReachable;
-            // Filler.Fill(reachableTable, width, playerPosition, 
-            //     // update player position to be the lowest value
-            //     pos => { if (pos < playerPosition) playerPosition = pos; return false; },
-            //     (value, idx) => (value < currentReachable) ? currentReachable : -1
-            // );
-
-            playerPosition = Filler.Fill2(reachableTable, width, playerPosition, currentReachable);
-            // playerPosition = Filler.Fill4(reachableTable, width, playerPosition, currentReachable);
-
+            CheckMaxReachable();
+            playerPosition = Filler.Fill2(reachableTable, level.width, playerPosition, currentReachable = ++maxReachable);
             reachableValid = true;
+        }
+
+        private void CheckMaxReachable()
+        {
+            // if currentReachable might overflow
+            if (maxReachable >= MAX_REACHABLE - 5) {
+                ClearReachableTable();
+            }
         }
 
         public int GetPossiblePushMoves(MoveRanges moves)
         {
-            if (!reachableValid) CalculatePlayerReachableMap();
+            if (!reachableValid) UpdatePlayerReachableMap();
 
             //var moves = new List<Move>();
             moves.StartAddRange();
@@ -154,11 +169,98 @@ namespace soko
 
             reachableTable[newBoxPos] = BOX;
             reachableTable[boxPos] = currentReachable;
-            playerPosition = boxPos;
+            if (boxPos < playerPosition) playerPosition = boxPos;
 
-            reachableValid = false;
+            //CheckMaxReachable();
+
+            if (reachableValid && FixReachableFwd(move)) reachableValid = false;
         }
-        
+
+        private bool FixReachableFwd(Move move)
+        {
+            var dirOff = level.dirOffset[move.Direction];
+            var pDirOff = level.width + 1 - Math.Abs(dirOff);
+
+            var boxPos = move.BoxPos;
+            int wallBits = 0;
+
+            int pos = boxPos - dirOff - pDirOff;
+            for (var i = 0; i < 4; ++i, pos += dirOff) {
+                wallBits <<= 1;
+                wallBits |= (reachableTable[pos] >= BLOCKED) ? 1 : 0;
+            }
+
+            pos = boxPos - dirOff + pDirOff;
+            for (var i = 0; i < 4; ++i, pos += dirOff) {
+                wallBits <<= 1;
+                wallBits |= (reachableTable[pos] >= BLOCKED) ? 1 : 0;
+            }
+
+            wallBits <<= 1;
+            wallBits |= (reachableTable[boxPos + 2*dirOff] >= BLOCKED ? 1 : 0);
+
+            var decision = PlayerReachable.decisionBits[wallBits];
+
+            return decision != 0;
+
+            /*
+            reachableTable[boxPos + dirOff] = BOX;
+            reachableTable[boxPos] = currentReachable;
+            if (boxPos < playerPosition) playerPosition = boxPos;
+
+            if (decision == 0) return;
+
+            var P1 = currentReachable; // reachableTable[boxPos - dirOff]; - obviously
+            var P2 = reachableTable[boxPos - pDirOff];
+            var P6 = reachableTable[boxPos + pDirOff];
+            var P3 = reachableTable[boxPos - pDirOff + dirOff];
+            var P4 = reachableTable[boxPos + 2*dirOff];
+            var P5 = reachableTable[boxPos + pDirOff + dirOff];
+
+            var P1overfill = false;
+
+            if ((decision & PlayerReachable.C3) != 0) {
+                if (P3 == P1 && !P1overfill) {
+                    // over-fill P1
+                    var minPos = Filler.FillOverWrite(reachableTable, level.width, boxPos - dirOff, P1, currentReachable = ++maxReachable);
+                    if (minPos != int.MaxValue) playerPosition = minPos;
+                    P1overfill = true;
+                }
+                Filler.FillOverWrite(reachableTable, level.width, boxPos - pDirOff + dirOff, P3, ++maxReachable);
+            }
+
+            if ((decision & PlayerReachable.C4) != 0) {
+                if (P3 == P1 && !P1overfill) {
+                    // over-fill P1
+                    var minPos = Filler.FillOverWrite(reachableTable, level.width, boxPos - dirOff, P1, currentReachable = ++maxReachable);
+                    if (minPos != int.MaxValue) playerPosition = minPos;
+                    P1overfill = true;
+                }
+                Filler.FillOverWrite(reachableTable, level.width, boxPos + 2*dirOff, P4, ++maxReachable);
+            }
+
+            if ((decision & PlayerReachable.C5) != 0) {
+                if (P3 == P1 && !P1overfill) {
+                    // over-fill P1
+                    var minPos = Filler.FillOverWrite(reachableTable, level.width, boxPos - dirOff, P1, currentReachable = ++maxReachable);
+                    if (minPos != int.MaxValue) playerPosition = minPos;
+                    P1overfill = true;
+                }
+                Filler.FillOverWrite(reachableTable, level.width, boxPos + pDirOff + dirOff, P5, ++maxReachable);
+            }
+
+            if ((decision & PlayerReachable.O2) != 0 && P1 != P2) {
+                var minPos = Filler.FillOverWrite(reachableTable, level.width, boxPos - pDirOff, P2, currentReachable);
+                if (minPos < playerPosition) playerPosition = minPos;
+            }
+
+            if ((decision & PlayerReachable.O6) != 0 && P1 != P6) {
+                var minPos = Filler.FillOverWrite(reachableTable, level.width, boxPos + pDirOff, P6, currentReachable);
+                if (minPos < playerPosition) playerPosition = minPos;
+            }
+            */
+        }
+
         public void ApplyPullMove(Move move)
         {
             var offset = level.dirOffset[move.Direction];
@@ -173,15 +275,115 @@ namespace soko
             boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
 
             reachableTable[newBoxPos] = BOX;
-            reachableTable[boxPos] = 0;  // TODO: reachable?? Doesn't matter, we set reachableValid = false
-            playerPosition = boxPos - offset*2;
 
-            reachableValid = false;
+            var isBoxPosReachable = reachableTable[boxPos - 1] == currentReachable || reachableTable[boxPos + 1] == currentReachable ||
+                reachableTable[boxPos - level.width] == currentReachable || reachableTable[boxPos + level.width] == currentReachable;
+
+            reachableTable[boxPos] = isBoxPosReachable ? currentReachable : ++maxReachable;  // TODO: reachable?? Doesn't matter, if we set reachableValid = false
+            
+            // if (playerPosition == newBoxPos) { // can only happen if move = Left or Up
+            //     while (reachableTable[++playerPosition] != currentReachable) {}
+            // }
+
+            var newPlayerPos = boxPos - offset*2;
+            // if (isBoxPosReachable && boxPos < playerPosition) playerPosition = boxPos;
+            /* if (newPlayerPos < playerPosition)  */playerPosition = newPlayerPos;
+            
+            CheckMaxReachable();
+            /* if (reachableValid && FixReachableBck(move))  */reachableValid = false;
+        }
+
+        private bool FixReachableBck(Move move)
+        {
+            var dirOff = level.dirOffset[move.Direction];
+            var pDirOff = level.width + 1 - Math.Abs(dirOff);
+
+            var boxPos = move.BoxPos;
+            int wallBits = 0;
+
+            int pos = boxPos - dirOff - pDirOff;
+            for (var i = 0; i < 4; ++i, pos += dirOff) {
+                wallBits <<= 1;
+                wallBits |= (reachableTable[pos] >= BLOCKED) ? 1 : 0;
+            }
+
+            pos = boxPos - dirOff + pDirOff;
+            for (var i = 0; i < 4; ++i, pos += dirOff) {
+                wallBits <<= 1;
+                wallBits |= (reachableTable[pos] >= BLOCKED) ? 1 : 0;
+            }
+
+            wallBits <<= 1;
+            wallBits |= (reachableTable[boxPos + 2*dirOff] >= BLOCKED ? 1 : 0);
+
+            var decision = PlayerReachable.decisionBits[wallBits];
+            return decision != 0;
+
+
+            /*
+            var P1 = currentReachable; // reachableTable[boxPos - dirOff]; - obviously
+            var P2 = reachableTable[boxPos - pDirOff];
+            var P6 = reachableTable[boxPos + pDirOff];
+            var P3 = reachableTable[boxPos - pDirOff + dirOff];
+            var P4 = reachableTable[boxPos + 2*dirOff];
+            var P5 = reachableTable[boxPos + pDirOff + dirOff];
+
+
+            var isNewOpeningReachable = P3 == currentReachable || P4 == currentReachable || P5 == currentReachable;
+            var minFillNeighbours = P3 != WALL ? P3 : P4 != WALL ? P4 : P5 != WALL ? P5 : ++maxReachable;
+            reachableTable[boxPos + dirOff] = isNewOpeningReachable ? currentReachable : minFillNeighbours;
+            reachableTable[boxPos] = BOX;
+
+            if (playerPosition == boxPos) { // can only happen if move = Left or Up
+                while (reachableTable[++playerPosition] != currentReachable) {}
+            }
+
+            if (decision == 0) return;
+
+
+            if ((decision & PlayerReachable.C3) != 0) {
+                var minPos = Filler.FillOverWrite(reachableTable, level.width, boxPos - pDirOff + dirOff, P3, minFillNeighbours);
+                if (minFillNeighbours == currentReachable && minPos < playerPosition) playerPosition = minPos;
+            }
+
+            if ((decision & PlayerReachable.C4) != 0) {
+                var minPos = Filler.FillOverWrite(reachableTable, level.width, boxPos + 2*dirOff, P4, minFillNeighbours);
+                if (minFillNeighbours == currentReachable && minPos < playerPosition) playerPosition = minPos;
+            }
+
+            if ((decision & PlayerReachable.C5) != 0) {
+                var minPos = Filler.FillOverWrite(reachableTable, level.width, boxPos + pDirOff + dirOff, P5, minFillNeighbours);
+                if (minFillNeighbours == currentReachable && minPos < playerPosition) playerPosition = minPos;
+            }
+            var P1overfill = false;
+
+            if ((decision & PlayerReachable.O2) != 0) {
+                if (!P1overfill) {
+                    // over-fill P1
+                    var minPos = Filler.FillOverWrite(reachableTable, level.width, boxPos - dirOff, P1, currentReachable = ++maxReachable);
+                    if (minPos != int.MaxValue) playerPosition = minPos;
+                    P1overfill = true;
+                } else {
+                    Filler.FillOverWrite(reachableTable, level.width, boxPos - pDirOff, P2, ++maxReachable);
+                }
+            }
+
+            if ((decision & PlayerReachable.O6) != 0) {
+                if (!P1overfill) {
+                    // over-fill P1
+                    var minPos = Filler.FillOverWrite(reachableTable, level.width, boxPos - dirOff, P1, currentReachable = ++maxReachable);
+                    if (minPos != int.MaxValue) playerPosition = minPos;
+                    P1overfill = true;
+                } else {
+                    Filler.FillOverWrite(reachableTable, level.width, boxPos + pDirOff, P6, ++maxReachable);
+                }
+            }
+            */
         }
 
         public ulong GetZHash()
         {
-            if (!reachableValid) CalculatePlayerReachableMap();
+            if (!reachableValid) UpdatePlayerReachableMap();
             return boxZhash ^ level.playerZbits[playerPosition];
         }
 

@@ -74,16 +74,25 @@ Doing a (small) reachable search every time we push a box probably doesn't help.
 
 Need to fill closed areas first, then the opened ones (if both are present).
 ```
-       123456
-#11#   21111#
-2$11
-2#1#
-      p123456
-#22#   12222# p2-open (p1!=p2 -> p1==p2)
-1$22          p345=222 -> 123 which is closed?
-1#2#
-      p123456
-#11#   11123#
-11$2
-1#3#
+      p123456   
+#22#   12222#   
+1$22            
+1#2#            
+      p123456   
+#11#   11145#   
+11$4              In theory, don't need to fill both 4 and 5, becuase even though they got separated from 2 (P3),
+1#5#              they are different from 1 (P2) after filling P2 - need optimization
+```
+
+If there's no opening, just closing: need to fill P1, instead of the closed cell, to get the new normalized player position.
+
+```
+.#.#    P345 = 333
+.$..
+.#.#
+
+.#.#    P345 = 345 -> Instead of (Fill P4, P5), Fill P1, 
+..$.
+.#.#
+
 ```

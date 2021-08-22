@@ -50,6 +50,31 @@ namespace soko
             return startPos;
         }
 
+        public static int FillOverWrite(int[] table, int width, int startPos, int from, int to) {
+            if (table[startPos] != from || table[startPos] == to) return int.MaxValue;
+
+            var list = new Stack<int>();
+            table[startPos] = to;
+            list.Push(startPos);
+
+            while (list.Count > 0) {
+                var pos = list.Pop();
+                if (pos < startPos) startPos = pos;
+                
+                checkPosition(pos + 1);
+                checkPosition(pos - 1);
+                checkPosition(pos + width);
+                checkPosition(pos - width);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            void checkPosition(int pos)
+            {
+                if (table[pos] == from) { table[pos] = to; list.Push(pos); }
+            }
+            return startPos;
+        }
+
         public static int Fill3(int[] table, int width, int startPos, int reachable) {
 
             table[startPos] = reachable;
