@@ -82,22 +82,37 @@ namespace soko
             reachableValid = true;
         }
 
-        public int GetPossiblePushMoves(MoveRanges moves)
+        public int GetPossiblePushMoves(MoveRanges moves, Move cameFrom)
         {
             if (!reachableValid) CalculatePlayerReachableMap();
 
+            int cameFromOffset = 0;
+            int cameFromBoxPos = 0;
+
+            // if IsBoxOtherSideReachable is false, we don't want to calculate these, just leave them as 0
+            if (cameFrom.IsBoxOtherSideReachable) {
+                cameFromOffset = level.dirOffset[cameFrom.Direction];
+                cameFromBoxPos = cameFrom.BoxPos + cameFromOffset;
+            }
+
             moves.StartAddRange();
 
-            foreach (var boxPos in boxPositions)
-            {
-                for (var dir = 0; dir < 4; dir++)
-                {
+            foreach (var boxPos in boxPositions) {
+                for (var dir = 0; dir < 4; dir++) {
                     var offset = level.dirOffset[dir];
-                    if (reachableTable[boxPos - offset] == currentReachable && 
-                            // dead cells only affect push moves
-                            (reachableTable[boxPos + offset] < BLOCKED && !level.table[boxPos + offset].has(Cell.DeadCell)))
-                    {
-                        moves.AddRangeItem((boxPos, dir));
+                    if (reachableTable[boxPos - offset] == currentReachable) {
+                        // if IsBoxOtherSideReachable == false, cameFromBoxPos==0, so this will quickly fail
+                        if (boxPos == cameFromBoxPos && offset == -cameFromOffset) {
+                            // this is the move that basically undoes the move `cameFrom`, so we don't need to check it, the resulting state is 
+                            // from where we got to the current state
+                            continue;
+                        }
+
+                        // dead cells only affect push moves
+                        if (reachableTable[boxPos + offset] < BLOCKED && !level.table[boxPos + offset].has(Cell.DeadCell)) {
+                            bool otherSideReachable = reachableTable[boxPos + offset] == currentReachable;
+                            moves.AddRangeItem((boxPos, dir, otherSideReachable));
+                        }
                     }
                 }
             }

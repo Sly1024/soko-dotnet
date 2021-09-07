@@ -80,7 +80,10 @@ namespace soko
         private void SolveForward()
         {
             statesToProcess = new Queue<ToProcess>();
-            statesToProcess.Enqueue(new ToProcess{ state = startState, moveIdx = fullState.GetPossiblePushMoves(moves) });
+            statesToProcess.Enqueue(new ToProcess{
+                state = startState,
+                moveIdx = fullState.GetPossiblePushMoves(moves, (0, 0)) // cameFrom.IsBoxOtherSideReachable == false
+            });
 
             while (statesToProcess.Count > 0) {
                 var toProcess = statesToProcess.Dequeue();
@@ -108,7 +111,7 @@ namespace soko
                             commonState = newZHash;
                             return;
                         }
-                        var moveIdx2 = fullState.GetPossiblePushMoves(moves);
+                        var moveIdx2 = fullState.GetPossiblePushMoves(moves, move);
                         if (moveIdx2 >= 0) {
                             statesToProcess.Enqueue(new ToProcess { state = newZHash, moveIdx = moveIdx2 });
                         }
