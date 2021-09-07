@@ -1,6 +1,5 @@
 using System.Text;
 using System;
-using System.Collections.Generic;
 
 namespace soko
 {
@@ -8,7 +7,7 @@ namespace soko
     {
         Level level;
         public int playerPosition;
-        HashSet<int> boxPositions;
+        BoxPositions boxPositions;
         ulong boxZhash;
 
         const int WALL = int.MaxValue;
@@ -23,8 +22,7 @@ namespace soko
         public State(Level level, int[] initialBoxPositions, int initialPlayerPosition)
         {
             this.level = level;
-            boxPositions = new HashSet<int>(initialBoxPositions.Length*3);
-            foreach (var box in initialBoxPositions) boxPositions.Add(box);
+            boxPositions = new BoxPositions(level.table.Length, initialBoxPositions);
 
             boxZhash = level.GetZHashForBoxes(initialBoxPositions);
             playerPosition = initialPlayerPosition;
@@ -37,7 +35,7 @@ namespace soko
             for (var i = 0; i < reachableTable.Length; i++) {
                 reachableTable[i] = level.table[i].has(Cell.Wall) ? WALL : 0;
             }
-            foreach (var box in boxPositions) {
+            foreach (var box in boxPositions.list) {
                 reachableTable[box] = BOX;
             }
             reachableValid = false;
@@ -97,7 +95,7 @@ namespace soko
 
             moves.StartAddRange();
 
-            foreach (var boxPos in boxPositions) {
+            foreach (var boxPos in boxPositions.list) {
                 for (var dir = 0; dir < 4; dir++) {
                     var offset = level.dirOffset[dir];
                     if (reachableTable[boxPos - offset] == currentReachable) {
@@ -151,8 +149,7 @@ namespace soko
             int newBoxPos = boxPos + offset;
 
             // update boxPositions
-            boxPositions.Remove(boxPos);
-            boxPositions.Add(newBoxPos);
+            boxPositions.Move(boxPos, newBoxPos);
 
             // update boxZhash
             boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
@@ -171,8 +168,7 @@ namespace soko
             int boxPos = newBoxPos + offset;
 
             // update boxPositions
-            boxPositions.Remove(boxPos);
-            boxPositions.Add(newBoxPos);
+            boxPositions.Move(boxPos, newBoxPos);
 
             // update boxZhash
             boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
