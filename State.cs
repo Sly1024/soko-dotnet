@@ -182,26 +182,31 @@ namespace soko
                 //  - C7 closed = C7 was reachable AND oneof C123 blocked AND oneof C456 blocked
                 //********************************************
 
+                int C1 = reachableTable[boxPos - pDirOff];
+                int C2 = reachableTable[boxPos - pDirOff + offset];
+                int C3 = reachableTable[boxPos - pDirOff + 2*offset];
+                int C4 = reachableTable[boxPos + pDirOff];
+                int C5 = reachableTable[boxPos + pDirOff + offset];
+                int C6 = reachableTable[boxPos + pDirOff + 2*offset];
+                int C7 = reachableTable[boxPos + 2*offset];
+
                 if (
                     // C1 opened
-                    (reachableTable[boxPos - pDirOff] != currentReachable) ||
+                    (C1 != currentReachable) ||
                     // C4 opened
-                    (reachableTable[boxPos + pDirOff] != currentReachable) ||
+                    (C4 != currentReachable) ||
                     // C2 closed
-                    ((reachableTable[boxPos - pDirOff + offset] == currentReachable) && 
-                        (reachableTable[boxPos - pDirOff] >= BLOCKED) && 
-                        (reachableTable[boxPos - pDirOff + 2*offset] >= BLOCKED || reachableTable[boxPos + pDirOff] >= BLOCKED || reachableTable[boxPos + pDirOff + offset] >= BLOCKED || reachableTable[boxPos + pDirOff + 2*offset] >= BLOCKED || reachableTable[boxPos + 2*offset] >= BLOCKED)
-                    ) ||
+                    ((C2 == currentReachable) && 
+                        (C1 >= BLOCKED) && 
+                        (C3 >= BLOCKED || C4 >= BLOCKED || C5 >= BLOCKED || C6 >= BLOCKED || C7 >= BLOCKED)) ||
                     // C5 closed
-                    ((reachableTable[boxPos + pDirOff + offset] == currentReachable) && 
-                        (reachableTable[boxPos + pDirOff] >= BLOCKED) && 
-                        (reachableTable[boxPos - pDirOff] >= BLOCKED || reachableTable[boxPos - pDirOff + offset] >= BLOCKED || reachableTable[boxPos - pDirOff + 2*offset] >= BLOCKED || reachableTable[boxPos + pDirOff + 2*offset] >= BLOCKED || reachableTable[boxPos + 2*offset] >= BLOCKED)
-                    ) ||
+                    ((C5 == currentReachable) && 
+                        (C4 >= BLOCKED) && 
+                        (C1 >= BLOCKED || C2 >= BLOCKED || C3 >= BLOCKED || C6 >= BLOCKED || C7 >= BLOCKED)) ||
                     // C7 closed
-                    ((reachableTable[boxPos + 2*offset] == currentReachable) && 
-                        (reachableTable[boxPos - pDirOff] >= BLOCKED || reachableTable[boxPos - pDirOff + offset] >= BLOCKED || reachableTable[boxPos - pDirOff + 2*offset] >= BLOCKED) &&
-                        (reachableTable[boxPos + pDirOff] >= BLOCKED || reachableTable[boxPos + pDirOff + offset] >= BLOCKED || reachableTable[boxPos + pDirOff + 2*offset] >= BLOCKED)
-                    )
+                    ((C7 == currentReachable) && 
+                        (C1 >= BLOCKED || C2 >= BLOCKED || C3 >= BLOCKED) &&
+                        (C4 >= BLOCKED || C5 >= BLOCKED || C6 >= BLOCKED))
                 )
                 {
                     reachableValid = false;
