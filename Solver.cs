@@ -100,7 +100,7 @@ namespace soko
                 do
                 {
                     move = moves.items[mIdx++];
-                    fullState.ApplyPushMove(move);
+                    var newBoxPosReachable = fullState.ApplyPushMove(move);
 
                     // if (commonState != null) return;
 
@@ -117,7 +117,7 @@ namespace soko
                         }
                     }
 
-                    fullState.ApplyPullMove(move);
+                    fullState.ApplyPullMove(move, newBoxPosReachable);
                 } while (!move.IsLast);
                 moves.RemoveRange(toProcess.moveIdx, mIdx);
             }

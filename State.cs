@@ -142,7 +142,7 @@ namespace soko
         //     // return moves;
         // }
 
-        public void ApplyPushMove(Move move)
+        public int ApplyPushMove(Move move)
         {
             var offset = level.dirOffset[move.Direction];
             var boxPos = move.BoxPos;
@@ -154,14 +154,66 @@ namespace soko
             // update boxZhash
             boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
 
+            var newBoxPosReachable = reachableTable[newBoxPos];
             reachableTable[newBoxPos] = BOX;
             reachableTable[boxPos] = currentReachable;
             playerPosition = boxPos;
 
-            reachableValid = false;
+            if (reachableValid) {
+                var pDirOff = level.width + 1 - Math.Abs(offset); // perpendicular direction offset
+
+                //********************************************
+                // @ = player,  [x] = box, move it to the right
+                // +---+---+---+---+    +---+---+---+---+
+                // |   |C1 |C2 |C3 |    |   |C1 |C2 |C3 |
+                // +---+---+---+---+    +---+---+---+---+
+                // | @ |[x]|   |C7 | -> |   | @ |[x]|C7 |
+                // +---+---+---+---+    +---+---+---+---+
+                // |   |C4 |C5 |C6 |    |   |C4 |C5 |C6 |
+                // +---+---+---+---+    +---+---+---+---+
+                // right direction: offset
+                // down direction: pDirOff
+                //
+                // Cases when we need to do a fill:
+                //  - C1 opened = C1 was not reachable (but now it is)
+                //  - C4 opened = C4 was not reachable (but now it is)
+                //  - C2 closed = C2 was reachable AND C1 blocked AND oneof C34567 blocked
+                //  - C5 closed = C5 was reachable AND C4 blocked AND oneof C12367 blocked
+                //  - C7 closed = C7 was reachable AND oneof C123 blocked AND oneof C456 blocked
+                //********************************************
+
+                if (
+                    // C1 opened
+                    (reachableTable[boxPos - pDirOff] != currentReachable) ||
+                    // C4 opened
+                    (reachableTable[boxPos + pDirOff] != currentReachable) ||
+                    // C2 closed
+                    ((reachableTable[boxPos - pDirOff + offset] == currentReachable) && 
+                        (reachableTable[boxPos - pDirOff] >= BLOCKED) && 
+                        (reachableTable[boxPos - pDirOff + 2*offset] >= BLOCKED || reachableTable[boxPos + pDirOff] >= BLOCKED || reachableTable[boxPos + pDirOff + offset] >= BLOCKED || reachableTable[boxPos + pDirOff + 2*offset] >= BLOCKED || reachableTable[boxPos + 2*offset] >= BLOCKED)
+                    ) ||
+                    // C5 closed
+                    ((reachableTable[boxPos + pDirOff + offset] == currentReachable) && 
+                        (reachableTable[boxPos + pDirOff] >= BLOCKED) && 
+                        (reachableTable[boxPos - pDirOff] >= BLOCKED || reachableTable[boxPos - pDirOff + offset] >= BLOCKED || reachableTable[boxPos - pDirOff + 2*offset] >= BLOCKED || reachableTable[boxPos + pDirOff + 2*offset] >= BLOCKED || reachableTable[boxPos + 2*offset] >= BLOCKED)
+                    ) ||
+                    // C7 closed
+                    ((reachableTable[boxPos + 2*offset] == currentReachable) && 
+                        (reachableTable[boxPos - pDirOff] >= BLOCKED || reachableTable[boxPos - pDirOff + offset] >= BLOCKED || reachableTable[boxPos - pDirOff + 2*offset] >= BLOCKED) &&
+                        (reachableTable[boxPos + pDirOff] >= BLOCKED || reachableTable[boxPos + pDirOff + offset] >= BLOCKED || reachableTable[boxPos + pDirOff + 2*offset] >= BLOCKED)
+                    )
+                )
+                {
+                    reachableValid = false;
+                } else {
+                    // no need to fill
+                    return newBoxPosReachable;
+                }
+            }
+            return 0;
         }
         
-        public void ApplyPullMove(Move move)
+        public void ApplyPullMove(Move move, int oldBoxPosReachable = 0)
         {
             var offset = level.dirOffset[move.Direction];
             var newBoxPos = move.BoxPos;
@@ -174,10 +226,10 @@ namespace soko
             boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
 
             reachableTable[newBoxPos] = BOX;
-            reachableTable[boxPos] = 0;  // TODO: reachable?? Doesn't matter, we set reachableValid = false
+            reachableTable[boxPos] = oldBoxPosReachable;  // TODO: reachable?? Doesn't matter, if we set reachableValid = false
             playerPosition = boxPos - offset*2;
 
-            reachableValid = false;
+            if (oldBoxPosReachable == 0) reachableValid = false;
         }
 
         public ulong GetZHash()
