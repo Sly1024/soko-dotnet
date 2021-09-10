@@ -76,6 +76,9 @@ namespace soko
         }
 
         public Queue<ToProcess> statesToProcess;
+            
+            int didFill = 0;
+            int didNotFill = 0;
 
         private void SolveForward()
         {
@@ -102,6 +105,8 @@ namespace soko
                     move = moves.items[mIdx++];
                     var newBoxPosReachable = fullState.ApplyPushMove(move);
 
+                    if (newBoxPosReachable == -1) didFill++; else didNotFill++;
+
                     // if (commonState != null) return;
 
                     var newZHash = fullState.GetZHash();
@@ -118,6 +123,7 @@ namespace soko
                     }
 
                     fullState.ApplyPullMove(move, newBoxPosReachable);
+                    fullState.CalculatePlayerReachableMap();
                 } while (!move.IsLast);
                 moves.RemoveRange(toProcess.moveIdx, mIdx);
             }
@@ -241,6 +247,7 @@ namespace soko
         public void PrintSolution()
         {
             Console.WriteLine($"{moves.idx}/{moves.items.Length} moves generated");
+            Console.WriteLine($"fill: {didFill}, nofill: {didNotFill}");
 
             var forwardSteps = new List<HashState>();
             var state = commonState;

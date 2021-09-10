@@ -157,7 +157,7 @@ namespace soko
             var newBoxPosReachable = reachableTable[newBoxPos];
             reachableTable[newBoxPos] = BOX;
             reachableTable[boxPos] = currentReachable;
-            playerPosition = boxPos;
+            // playerPosition = boxPos;
 
             if (reachableValid) {
                 var pDirOff = level.width + 1 - Math.Abs(offset); // perpendicular direction offset
@@ -210,15 +210,18 @@ namespace soko
                 )
                 {
                     reachableValid = false;
+                    playerPosition = boxPos;
                 } else {
                     // no need to fill
+                    while (reachableTable[playerPosition] != currentReachable) ++playerPosition;
+                    if (boxPos < playerPosition) playerPosition = boxPos;
                     return newBoxPosReachable;
                 }
             }
-            return 0;
+            return -1;
         }
         
-        public void ApplyPullMove(Move move, int oldBoxPosReachable = 0)
+        public void ApplyPullMove(Move move, int oldBoxPosReachable = -1)
         {
             var offset = level.dirOffset[move.Direction];
             var newBoxPos = move.BoxPos;
@@ -231,10 +234,16 @@ namespace soko
             boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
 
             reachableTable[newBoxPos] = BOX;
-            reachableTable[boxPos] = oldBoxPosReachable;  // TODO: reachable?? Doesn't matter, if we set reachableValid = false
-            playerPosition = boxPos - offset*2;
+            reachableTable[boxPos] = oldBoxPosReachable == -1 ? 0 : oldBoxPosReachable;  // TODO: reachable?? Doesn't matter, if we set reachableValid = false
+            // playerPosition = boxPos - offset*2;
 
-            if (oldBoxPosReachable == 0) reachableValid = false;
+            if (oldBoxPosReachable == -1) {
+                reachableValid = false;
+                playerPosition = boxPos - offset*2;
+            } else {
+                while (reachableTable[playerPosition] != currentReachable) ++playerPosition;
+                if (boxPos < playerPosition) playerPosition = boxPos;
+            }
         }
 
         public ulong GetZHash()
