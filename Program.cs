@@ -41,7 +41,7 @@ namespace soko
         {
             while (!finished) {
                 await Task.Delay(500);
-                Console.Write("\r {0:h\\:mm\\:ss\\.f} Mem/Alloc: {1} / {2} MB, GC: {3}/{4}/{5} States: {6} / {7}                     ", /* BranchF: {6:0.00} */
+                Console.Write("\r {0:h\\:mm\\:ss\\.f} Mem/Alloc: {1} / {2} MB, GC: {3}/{4}/{5} States: {6:n0} / {7:n0}; {8:n0} / {9:n0}                     ", /* BranchF: {6:0.00} */
                     watch.Elapsed,
                     Process.GetCurrentProcess().PrivateMemorySize64/(1<<20),
                     GC.GetTotalAllocatedBytes()/(1<<20),
@@ -49,7 +49,10 @@ namespace soko
                     GC.CollectionCount(1),
                     GC.CollectionCount(2),
                     solver.statesToProcess.Count,
-                    solver.forwardVisitedStates.Count);
+                    solver.forwardVisitedStates.Count,
+                    solver.statesToProcessBck.Count,
+                    solver.backwardVisitedStates.Count
+                    );
             }
             Console.WriteLine();
         }

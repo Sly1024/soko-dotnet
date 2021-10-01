@@ -182,3 +182,14 @@ Time: 00:02:47.8951562
 luurRdRdddrrruuLuRdddllluuuRldddrrruulLulDulullddrRurruLuuurrrrrrrrrdddddlluRdrUUUUruLLLdlUllllllddddldlluurRdrUUUluRRRRRRRRRurDDDDrdLuuuullllllllldddrddrruLLrrdrruLLdlluuluuurrrrrrUUddrrrdddddlluRdrUUUUruLLLdlUUldllllldddrddrruLdlLUUUUluRRRRRRRRRurDDDDrdLuuuullllllllldddddrruLuluuurrrrruuuurrdLLddrUddrrrdddddlluRdrUUUUruLLLdlUUldllllldddrddlUUUUluRRRRRRRRRurDDDDrdLuuuulllluuuLLLrrrurrdLLLLdlUruLLrrdrrddrUluurrdLLLLdlUruLrdrrrdddrrrdddddlluRdrUUUUruLLLdlUUUluurrdLLLLulDrdLLruLrrrrdddllllldddrdrrdddlllUUUlullddrRurUrdrrdddllluUruulUUluRRRRRRRRRurDDDDrdLdlluRdrUUUUruLLLdlUlllllldddrddlUUUUluRRRRRRRRRurDDDDrdLuuuulllUUddrrrdddddlluRdrUUUUruLLLdlUUluuurrdLLddrUluLLLrrrurrdLLLLulDrdL
 213 pushes, 474 moves
 
+*** Fwd + Bck solving
+
+orig_1 FWD: 0:00:05.6 Mem/Alloc: 101 / 91 MB, GC: 3/3/3 States: 6 / 1 531 708; 1 / 1
+orig_1 BCK: 0:00:13.7 Mem/Alloc: 281 / 276 MB, GC: 3/3/3 States: 1 / 1; 7392 / 3996170
+orig_1 F,B: 0:00:06.1 Mem/Alloc: 125 / 139 MB, GC: 3/3/3 States: 44229 / 795 884; 57658 / 940 531
+orig_1 F<B: 0:00:05.1 Mem/Alloc: 125 / 118 MB, GC: 3/3/3 States: 36 974 / 1 079 992; 46 886 / 403 211
+
+orig_17 FWD: 0:02:51.3 Mem/Alloc: 1251 / 2637 MB, GC: 10/9/9 States: 771 / 36 609 705; 1 / 1
+orig_17 BCK: 0:00:48.7 Mem/Alloc: 400 / 859 MB, GC: 7/7/7 States: 1 / 1; 5753 / 12 093 454
+orig_17 F,B: 0:01:09.1 Mem/Alloc: 464 / 985 MB, GC: 6/6/6 States: 264668 / 7 671 056; 170635 / 8 539 210
+orig_17 F<B: 0:00:51.3 Mem/Alloc: 910 / 1013 MB, GC: 5/5/5 States: 181 641 / 2 048 797; 45 418 / 10 601 969

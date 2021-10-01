@@ -19,6 +19,8 @@ namespace soko
         int currentReachable = 0;
         bool reachableValid = false;
 
+        Filler2 filler = new Filler2();
+
         public State(Level level, int[] initialBoxPositions, int initialPlayerPosition)
         {
             this.level = level;
@@ -75,7 +77,7 @@ namespace soko
                 currentReachable = 1;
             }
 
-            playerPosition = Filler.Fill2(reachableTable, width, playerPosition, currentReachable);
+            playerPosition = filler.Fill(reachableTable, width, playerPosition, currentReachable);
 
             reachableValid = true;
         }
@@ -118,29 +120,43 @@ namespace soko
             return moves.FinishAddRange();
         }
         
-        // public int GetPossiblePullMoves(MoveRanges moves)
-        // {
-        //     if (!reachableValid) CalculatePlayerReachableMap();
+        public int GetPossiblePullMoves(MoveRanges moves, Move cameFrom)
+        {
+            if (!reachableValid) CalculatePlayerReachableMap();
 
-        //     //var moves = new List<Move>();
-        //     moves.StartAddRange();
+            int cameFromOffset = 0;
+            int cameFromBoxPos = 0;
 
-        //     foreach (var boxPos in boxPositions)
-        //     {
-        //         for (var dir = 0; dir < 4; dir++)
-        //         {
-        //             var offset = level.dirOffset[dir];
-        //             if (reachableTable[boxPos - offset] == currentReachable && 
-        //                 reachableTable[boxPos - 2*offset] < BLOCKED)
-        //             {
-        //                 moves.AddRangeItem((boxPos, dir));
-        //             }
-        //         }
-        //     }
+            // if IsBoxOtherSideReachable is false, we don't want to calculate these, just leave them as 0
+            if (cameFrom.IsBoxOtherSideReachable) {
+                cameFromOffset = level.dirOffset[cameFrom.Direction];
+                cameFromBoxPos = cameFrom.BoxPos - cameFromOffset;
+            }
 
-        //     return moves.FinishAddRange();
-        //     // return moves;
-        // }
+            moves.StartAddRange();
+
+            foreach (var boxPos in boxPositions.list)
+            {
+                for (var dir = 0; dir < 4; dir++)
+                {
+                    var offset = level.dirOffset[dir];
+                    if (reachableTable[boxPos - offset] == currentReachable) {
+                        // if IsBoxOtherSideReachable == false, cameFromBoxPos==0, so this will quickly fail
+                        if (boxPos == cameFromBoxPos && offset == -cameFromOffset) {
+                            // this is the move that basically undoes the move `cameFrom`, so we don't need to check it, the resulting state is 
+                            // from where we got to the current state
+                            continue;
+                        }
+                        if (reachableTable[boxPos - 2*offset] < BLOCKED) {
+                            bool otherSideReachable = reachableTable[boxPos + offset] == currentReachable;
+                            moves.AddRangeItem((boxPos - offset, dir, otherSideReachable));
+                        }
+                    }
+                }
+            }
+
+            return moves.FinishAddRange();
+        }
 
         public void ApplyPushMove(Move move)
         {
@@ -175,7 +191,28 @@ namespace soko
 
             reachableTable[newBoxPos] = BOX;
             reachableTable[boxPos] = 0;  // TODO: reachable?? Doesn't matter, we set reachableValid = false
-            playerPosition = boxPos - offset*2;
+            playerPosition = newBoxPos - offset;
+
+            reachableValid = false;
+        }
+
+        public void ApplyMove(Move move, bool pull)
+        {
+            var offset = level.dirOffset[move.Direction];
+            int boxPos = move.BoxPos;
+            int newBoxPos = boxPos;
+
+            if (pull) boxPos += offset; else newBoxPos += offset;
+
+            // update boxPositions
+            boxPositions.Move(boxPos, newBoxPos);
+
+            // update boxZhash
+            boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
+
+            reachableTable[newBoxPos] = BOX;
+            reachableTable[boxPos] = pull ? 0 : currentReachable;  // TODO: reachable?? Doesn't matter, we set reachableValid = false
+            playerPosition = pull ? newBoxPos - offset : boxPos;
 
             reachableValid = false;
         }

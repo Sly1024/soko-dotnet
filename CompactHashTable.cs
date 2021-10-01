@@ -16,14 +16,10 @@ namespace soko
 
         public int Count { get => count; }
 
-        public CompactHashTable(int minimumSize, float loadFactor)
+        public CompactHashTable(int minimumSize, float loadFactor = 0.75f)
         {
             this.loadFactor = loadFactor;
             entries = new HashEntry<TValue>[FindPrimeAbove(minimumSize)];
-        }
-
-        public CompactHashTable(int minimumSize): this(minimumSize, 0.75f)
-        {
         }
 
         public bool TryAdd(ulong key, TValue value)
