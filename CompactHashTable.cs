@@ -13,6 +13,7 @@ namespace soko
         private HashEntry<TValue>[] entries;
         private int count = 0;
         private float loadFactor;
+        private int sizeTimesLoadFactor;
 
         public int Count { get => count; }
 
@@ -20,6 +21,7 @@ namespace soko
         {
             this.loadFactor = loadFactor;
             entries = new HashEntry<TValue>[FindPrimeAbove(minimumSize)];
+            sizeTimesLoadFactor = (int)(entries.Length * loadFactor);
         }
 
         public bool TryAdd(ulong key, TValue value)
@@ -47,11 +49,11 @@ namespace soko
         {
             int size = entries.Length;
             int idx = (int)(key % (ulong)size);
-            ref HashEntry<TValue> state = ref entries[idx];
+            ref HashEntry<TValue> item = ref entries[idx];
 
-            while (state.key != 0 && state.key != key) {
+            while (item.key != 0 && item.key != key) {
                 if (++idx == size) idx = 0;
-                state = ref entries[idx];
+                item = ref entries[idx];
             }
             return idx;
         }
@@ -67,10 +69,10 @@ namespace soko
 
         private void CheckLoadFactor()
         {
-            int size = entries.Length;
-            if (count > size * loadFactor) {
+            if (count > sizeTimesLoadFactor) {
                 var oldEntries = entries;
-                entries = new HashEntry<TValue>[FindPrimeAbove(size * 7 / 4)];   // 1.75x
+                entries = new HashEntry<TValue>[FindPrimeAbove(entries.Length * 7 / 4)];   // 1.75x
+                sizeTimesLoadFactor = (int)(entries.Length * loadFactor);
 
                 foreach (var item in oldEntries) {
                     InternalAdd(item.key, item.value);

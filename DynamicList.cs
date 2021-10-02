@@ -11,10 +11,10 @@ namespace soko
             items = new T[capacity];
         }
 
-        public void Add(T state) 
+        public void Add(T item) 
         {
             EnsureCapacity(idx + 1);
-            items[idx++] = state;
+            items[idx++] = item;
         }
 
         public T Pop() 

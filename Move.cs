@@ -21,6 +21,8 @@ namespace soko
         public bool IsBoxOtherSideReachable { get => ((encoded >> 14) & 1) == 1; } // 14. bit
         public bool IsLast { get => encoded >> 15 == 1; }   // first (15.) bit
 
+        public int NewBoxPos { get => BoxPos + Level.DirOffset[Direction]; }
+
         public void SetLastBit()
         {
             encoded |= 1 << 15;

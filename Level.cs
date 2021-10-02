@@ -29,19 +29,33 @@ namespace soko
         public ulong[] boxZbits;
         public ulong[] playerZbits;
 
-        public int[] dirOffset;
+        public static int[] DirOffset;
 
         public Level(int[] table, int width)
         {
             this.table = table;
             this.width = width;
 
-            dirOffset = new [] { -1, 1, -width, width };
+            // L, R, U, D
+            DirOffset = new [] { -1, 1, -width, width };
 
             PreProcessTable();
             Filler.FillPerimeter(table, width, Cell.Wall);
             DetectDeadCells();
+            CountDeadCells();
             GenerateZobristBitstrings();
+        }
+
+        private void CountDeadCells()
+        {
+            var dead = 0;
+            var free = 0;
+            for (var i = 0; i < table.Length; i++)
+            {
+                var cell = table[i];
+                if (cell.has(Cell.DeadCell)) dead++; else if (!cell.has(Cell.Wall)) free++;
+            }
+            Console.WriteLine("Dead: " + dead + " Free: " + free);
         }
 
         private void PreProcessTable()

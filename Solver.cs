@@ -101,13 +101,15 @@ namespace soko
 
             return Task.Run(() => {
                 while (commonState == 0) {
-                    if (statesToProcess.Count < statesToProcessBck.Count) 
+                    if (statesToProcess.Count > 0 && statesToProcess.Count < statesToProcessBck.Count) 
                         SolveForwardOneStep();
                     else 
                         SolveReverseOneStep();
                 }
             });
         }
+
+
 
         private void SolveForwardOneStep()
         {
@@ -127,18 +129,18 @@ namespace soko
                     move = moves.items[mIdx++];
                     fwdState.ApplyPushMove(move);
 
-                    // if (commonState != 0) return;
+                    if (!fwdState.isBoxDeadLocked(move.NewBoxPos)) {
+                        var newZHash = fwdState.GetZHash();
 
-                    var newZHash = fwdState.GetZHash();
-
-                    if (forwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
-                        if (backwardVisitedStates.ContainsKey(newZHash)) {
-                            commonState = newZHash;
-                            return;
-                        }
-                        var moveIdx2 = fwdState.GetPossiblePushMoves(moves, move);
-                        if (moveIdx2 >= 0) {
-                            statesToProcess.Enqueue(new ToProcess { state = newZHash, moveIdx = moveIdx2 });
+                        if (forwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
+                            if (backwardVisitedStates.ContainsKey(newZHash)) {
+                                commonState = newZHash;
+                                return;
+                            }
+                            var moveIdx2 = fwdState.GetPossiblePushMoves(moves, move);
+                            if (moveIdx2 >= 0) {
+                                statesToProcess.Enqueue(new ToProcess { state = newZHash, moveIdx = moveIdx2 });
+                            }
                         }
                     }
 
@@ -226,8 +228,6 @@ namespace soko
                 {
                     move = moves.items[mIdx++];
                     bckState.ApplyPullMove(move);
-
-                    // if (commonState != 0) return;
 
                     var newZHash = bckState.GetZHash();
 

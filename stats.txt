@@ -1,7 +1,7 @@
 CPU: Intel Core i3-2130 (3.4GHz) 2 core/4 thread
 RAM: 8 GB DDR3
 
-Version 1 - brute force
+*** Version 1 - brute force
 
 PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\micro_5.sok
 Time: 00:00:06.3629056
@@ -39,7 +39,7 @@ GC Gen0 Coll: 4318
 GC Gen1 Coll: 1601
 GC Gen2 Coll: 19
 
-Version 2 - Reverse Solve
+*** Version 2 - Reverse Solve
 
 PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\micro_5.sok
 Time: 00:00:00.0184537
@@ -77,7 +77,7 @@ GC Gen0 Coll: 2905
 GC Gen1 Coll: 1145
 GC Gen2 Coll: 11
 
-Version 3 - Fwd + Bckwd
+*** Version 3 - Fwd + Bckwd
 
 PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\micro_5.sok 
 Time: 00:00:00.0151711
@@ -117,7 +117,7 @@ GC Gen0 Coll: 2741
 GC Gen1 Coll: 1098
 GC Gen2 Coll: 11
 
-Version 4 - Dead cell detection
+*** Version 4 - Dead cell detection
 
 PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
 Time: 00:00:13.5071935
@@ -132,20 +132,14 @@ GC Gen0 Coll: 1275
 GC Gen1 Coll: 492
 GC Gen2 Coll: 10
 
-
-PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
- 0:00:37.1 Mem: 104 MB,  Alloc: 16390 MB, GC: 10859/11/9
-
-PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
- 0:00:14.2 Mem: 127 MB,  Alloc: 2624 MB, GC: 1656/9/9
-Time: 00:00:14.2586940
+*** Version 5 - Zhash, forward only
 
 PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
 move: 2, hashstate: 18 ptr: 8
  0:00:13.1 Mem: 93 MB,  Alloc: 2180 MB, GC: 1374/6/6
 Time: 00:00:13.1904907
 
-New fill algorithm (Fill2)
+*** New fill algorithm (Fill2)
 
 PS C:\Prog\dotnet\soko> .\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
 move: 2, hashstate: 18 ptr: 8
@@ -182,14 +176,16 @@ Time: 00:02:47.8951562
 luurRdRdddrrruuLuRdddllluuuRldddrrruulLulDulullddrRurruLuuurrrrrrrrrdddddlluRdrUUUUruLLLdlUllllllddddldlluurRdrUUUluRRRRRRRRRurDDDDrdLuuuullllllllldddrddrruLLrrdrruLLdlluuluuurrrrrrUUddrrrdddddlluRdrUUUUruLLLdlUUldllllldddrddrruLdlLUUUUluRRRRRRRRRurDDDDrdLuuuullllllllldddddrruLuluuurrrrruuuurrdLLddrUddrrrdddddlluRdrUUUUruLLLdlUUldllllldddrddlUUUUluRRRRRRRRRurDDDDrdLuuuulllluuuLLLrrrurrdLLLLdlUruLLrrdrrddrUluurrdLLLLdlUruLrdrrrdddrrrdddddlluRdrUUUUruLLLdlUUUluurrdLLLLulDrdLLruLrrrrdddllllldddrdrrdddlllUUUlullddrRurUrdrrdddllluUruulUUluRRRRRRRRRurDDDDrdLdlluRdrUUUUruLLLdlUlllllldddrddlUUUUluRRRRRRRRRurDDDDrdLuuuulllUUddrrrdddddlluRdrUUUUruLLLdlUUluuurrdLLddrUluLLLrrrurrdLLLLulDrdL
 213 pushes, 474 moves
 
-*** Fwd + Bck solving
+*** Fwd + Bck solving, DeadLock detection
 
 orig_1 FWD: 0:00:05.6 Mem/Alloc: 101 / 91 MB, GC: 3/3/3 States: 6 / 1 531 708; 1 / 1
 orig_1 BCK: 0:00:13.7 Mem/Alloc: 281 / 276 MB, GC: 3/3/3 States: 1 / 1; 7392 / 3996170
 orig_1 F,B: 0:00:06.1 Mem/Alloc: 125 / 139 MB, GC: 3/3/3 States: 44229 / 795 884; 57658 / 940 531
 orig_1 F<B: 0:00:05.1 Mem/Alloc: 125 / 118 MB, GC: 3/3/3 States: 36 974 / 1 079 992; 46 886 / 403 211
+orig_1 F<B+DL: 0:00:03.6 Mem/Alloc: 76 / 65 MB, GC: 3/3/3 States: 24 089 / 778 051; 32 357 / 270 281
 
 orig_17 FWD: 0:02:51.3 Mem/Alloc: 1251 / 2637 MB, GC: 10/9/9 States: 771 / 36 609 705; 1 / 1
 orig_17 BCK: 0:00:48.7 Mem/Alloc: 400 / 859 MB, GC: 7/7/7 States: 1 / 1; 5753 / 12 093 454
 orig_17 F,B: 0:01:09.1 Mem/Alloc: 464 / 985 MB, GC: 6/6/6 States: 264668 / 7 671 056; 170635 / 8 539 210
 orig_17 F<B: 0:00:51.3 Mem/Alloc: 910 / 1013 MB, GC: 5/5/5 States: 181 641 / 2 048 797; 45 418 / 10 601 969
+orig_17 F<B+DL: 0:00:52.2 Mem/Alloc: 676 / 1013 MB, GC: 7/7/7 States: 181 641 / 2 633 584; 43 971 / 10 329 789

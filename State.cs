@@ -19,7 +19,7 @@ namespace soko
         int currentReachable = 0;
         bool reachableValid = false;
 
-        Filler2 filler = new Filler2();
+        private Filler2 filler = new Filler2();
 
         public State(Level level, int[] initialBoxPositions, int initialPlayerPosition)
         {
@@ -70,7 +70,6 @@ namespace soko
         public void CalculatePlayerReachableMap()
         {
             var width = level.width;
-
             // if currentReachable overflows
             if (++currentReachable >= MAX_REACHABLE) {
                 ClearReachableTable();
@@ -91,7 +90,7 @@ namespace soko
 
             // if IsBoxOtherSideReachable is false, we don't want to calculate these, just leave them as 0
             if (cameFrom.IsBoxOtherSideReachable) {
-                cameFromOffset = level.dirOffset[cameFrom.Direction];
+                cameFromOffset = Level.DirOffset[cameFrom.Direction];
                 cameFromBoxPos = cameFrom.BoxPos + cameFromOffset;
             }
 
@@ -99,7 +98,7 @@ namespace soko
 
             foreach (var boxPos in boxPositions.list) {
                 for (var dir = 0; dir < 4; dir++) {
-                    var offset = level.dirOffset[dir];
+                    var offset = Level.DirOffset[dir];
                     if (reachableTable[boxPos - offset] == currentReachable) {
                         // if IsBoxOtherSideReachable == false, cameFromBoxPos==0, so this will quickly fail
                         if (boxPos == cameFromBoxPos && offset == -cameFromOffset) {
@@ -129,7 +128,7 @@ namespace soko
 
             // if IsBoxOtherSideReachable is false, we don't want to calculate these, just leave them as 0
             if (cameFrom.IsBoxOtherSideReachable) {
-                cameFromOffset = level.dirOffset[cameFrom.Direction];
+                cameFromOffset = Level.DirOffset[cameFrom.Direction];
                 cameFromBoxPos = cameFrom.BoxPos - cameFromOffset;
             }
 
@@ -139,7 +138,7 @@ namespace soko
             {
                 for (var dir = 0; dir < 4; dir++)
                 {
-                    var offset = level.dirOffset[dir];
+                    var offset = Level.DirOffset[dir];
                     if (reachableTable[boxPos - offset] == currentReachable) {
                         // if IsBoxOtherSideReachable == false, cameFromBoxPos==0, so this will quickly fail
                         if (boxPos == cameFromBoxPos && offset == -cameFromOffset) {
@@ -160,9 +159,8 @@ namespace soko
 
         public void ApplyPushMove(Move move)
         {
-            var offset = level.dirOffset[move.Direction];
             var boxPos = move.BoxPos;
-            int newBoxPos = boxPos + offset;
+            var newBoxPos = move.NewBoxPos;
 
             // update boxPositions
             boxPositions.Move(boxPos, newBoxPos);
@@ -179,9 +177,9 @@ namespace soko
         
         public void ApplyPullMove(Move move)
         {
-            var offset = level.dirOffset[move.Direction];
+            var offset = Level.DirOffset[move.Direction];
             var newBoxPos = move.BoxPos;
-            int boxPos = newBoxPos + offset;
+            var boxPos = newBoxPos + offset;
 
             // update boxPositions
             boxPositions.Move(boxPos, newBoxPos);
@@ -198,9 +196,9 @@ namespace soko
 
         public void ApplyMove(Move move, bool pull)
         {
-            var offset = level.dirOffset[move.Direction];
-            int boxPos = move.BoxPos;
-            int newBoxPos = boxPos;
+            var offset = Level.DirOffset[move.Direction];
+            var boxPos = move.BoxPos;
+            var newBoxPos = boxPos;
 
             if (pull) boxPos += offset; else newBoxPos += offset;
 
@@ -217,6 +215,58 @@ namespace soko
             reachableValid = false;
         }
 
+        public bool isBoxDeadLocked(int boxPos)
+        {
+            boxPositions.ResetMarked();
+            
+            if (isBoxMovable(boxPos)) return false;
+
+            var blockedBoxes = boxPositions.markedList;
+            for (int i = boxPositions.markedCount-1; i >= 0; --i) {
+                if (!level.table[blockedBoxes[i]].has(Cell.Goal)) return true;
+            }
+
+            return false;
+        }
+
+        private bool isBoxMovable(int boxPos) 
+        {
+            if (boxPositions.IsMarked(boxPos)) return false;
+
+            // if it's free either horizontally or vertically, then it's movable
+            int H1 = reachableTable[boxPos - 1];
+            int H2 = reachableTable[boxPos + 1];
+            if (H1 < BLOCKED && H2 < BLOCKED) return true;
+
+            var w = level.width;
+            int V1 = reachableTable[boxPos - w];
+            int V2 = reachableTable[boxPos + w];
+            if (V1 < BLOCKED && V2 < BLOCKED) return true;
+
+            // temporarily mark the box so we avoid recursive loops
+            boxPositions.MarkBox(boxPos);
+
+            // at this point we know that both directions are blocked, need to check if the neighbour boxes are movable
+
+            // Note: The middle "&" is NOT a short-circuiting operator.
+            // We need that so that isBoxMovable() is called for the other side (H2/V2) even if the left-hand is false
+            // to mark the boxes "blocked" and isBoxDeadLocked() will check if they are on a goal position
+            // Imagine the following case: we push the lower box up into the corner (the only goal position)
+            // ####    ####
+            // #.$  => #*$
+            // #$      #
+            // Now (... || H1 < BLOCKED) fails because there's a WALL to the left of the box in the corner, but we still need to mark the 
+            // box on the right as blocked so we can check, and if it's not on a goal position, this is a deadlock!
+            if ((H1 == BOX && isBoxMovable(boxPos - 1) || H1 < BLOCKED) & (H2 == BOX && isBoxMovable(boxPos + 1) || H2 < BLOCKED) ||
+                (V1 == BOX && isBoxMovable(boxPos - w) || V1 < BLOCKED) & (V2 == BOX && isBoxMovable(boxPos + w) || V2 < BLOCKED))
+            {
+                boxPositions.UnmarkBox(boxPos);
+                return true;
+            }
+
+            return false;
+        }
+
         public ulong GetZHash()
         {
             if (!reachableValid) CalculatePlayerReachableMap();
@@ -229,7 +279,7 @@ namespace soko
         // }
 
         internal int GetPlayerPositionFor(Move move) {
-            return move.BoxPos - level.dirOffset[move.Direction];
+            return move.BoxPos - Level.DirOffset[move.Direction];
         }
 
         internal string FindPlayerPath(int playerPos, Move move)
