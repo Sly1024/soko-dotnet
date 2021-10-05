@@ -1,3 +1,4 @@
+using System.Collections;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,7 +12,8 @@ namespace soko
         public const int Goal = 2;
         public const int Box = 4;
         public const int Player = 8;
-        public const int DeadCell = 16;
+        public const int PushDeadCell = 16;
+        public const int PullDeadCell = 32;
 
         public static bool has(this int cell, int value) {
             return (cell & value) != Cell.Empty;
@@ -31,6 +33,10 @@ namespace soko
 
         public static int[] DirOffset;
 
+        public HeuristicDistances distances;
+        public BitArray pushDeadCells;
+        public BitArray pullDeadCells;
+
         public Level(int[] table, int width)
         {
             this.table = table;
@@ -41,6 +47,9 @@ namespace soko
 
             PreProcessTable();
             Filler.FillPerimeter(table, width, Cell.Wall);
+
+            distances = new HeuristicDistances(this);
+
             DetectDeadCells();
             CountDeadCells();
             GenerateZobristBitstrings();
@@ -53,7 +62,7 @@ namespace soko
             for (var i = 0; i < table.Length; i++)
             {
                 var cell = table[i];
-                if (cell.has(Cell.DeadCell)) dead++; else if (!cell.has(Cell.Wall)) free++;
+                if (cell.has(Cell.PushDeadCell)) dead++; else if (!cell.has(Cell.Wall)) free++;
             }
             Console.WriteLine("Dead: " + dead + " Free: " + free);
         }
@@ -90,59 +99,19 @@ namespace soko
 
         private void DetectDeadCells()
         {
-            var cornersInRow = new Dictionary<int, List<int>>();
-            var cornersInColumn = new Dictionary<int, List<int>>();
+            pushDeadCells = new BitArray(table.Length);
+            pullDeadCells = new BitArray(table.Length);
 
-            // corner detection
             for (var i = 0; i < table.Length; i++) {
-                if (table[i] != Cell.Wall && table[i] != Cell.Goal && IsCornerCell(i)) {
-                    table[i] |= Cell.DeadCell;
-                    var row = i / width;
-                    var col = i % width;
-                    cornersInRow.TryAdd(row, new List<int>());
-                    cornersInRow[row].Add(i);
-                    cornersInColumn.TryAdd(col, new List<int>());
-                    cornersInColumn[col].Add(i);
+                if (!table[i].has(Cell.Wall | Cell.Goal) && distances.Pushes[i] == null) {
+                    table[i] |= Cell.PushDeadCell;
+                    pushDeadCells[i] = true;
+                }
+                if (!table[i].has(Cell.Wall | Cell.Box) && distances.Pulls[i] == null) {
+                    table[i] |= Cell.PullDeadCell;
+                    pullDeadCells[i] = true;
                 }
             }
-
-            foreach (var (row, corners) in cornersInRow) {
-                var pos1 = corners[0];
-                for (var i = 1; i < corners.Count; i++) {
-                    var pos2 = corners[i];
-                    ProcessAlongWall(pos1, pos2, 1, width);
-                    pos1 = pos2;
-                }
-            }
-
-            foreach (var (col, corners) in cornersInColumn) {
-                var pos1 = corners[0];
-                for (var i = 1; i < corners.Count; i++) {
-                    var pos2 = corners[i];
-                    ProcessAlongWall(pos1, pos2, width, 1);
-                    pos1 = pos2;
-                }
-            }
-        }
-
-        private void ProcessAlongWall(int pos1, int pos2, int dir, int lateralDir)
-        {
-            var unsafeLine = true;
-            for (var i = pos1 + dir; i < pos2; i += dir) {
-                if (table[i].has(Cell.Wall | Cell.Goal) || (table[i + lateralDir] != Cell.Wall && table[i - lateralDir] != Cell.Wall)) {
-                    unsafeLine = false;
-                    break;
-                }
-            }
-            if (unsafeLine) {
-                for (var i = pos1 + dir; i < pos2; i += dir) table[i] |= Cell.DeadCell;
-            }
-        }
-
-        private bool IsCornerCell(int pos)
-        {
-            return (table[pos-1] | table[pos+1]).has(Cell.Wall) 
-                && (table[pos-width] | table[pos+width]).has(Cell.Wall);
         }
 
         private void GenerateZobristBitstrings()

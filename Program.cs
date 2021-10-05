@@ -26,7 +26,7 @@ namespace soko
             watch = new Stopwatch();
             watch.Start();
 
-            Task.WhenAll(new [] {
+            Task.WhenAny(new [] {
                 solver.Solve().ContinueWith((_) => { finished = true; }),
                 PrintStats()
             }).Wait();
@@ -43,8 +43,8 @@ namespace soko
                 await Task.Delay(500);
                 Console.Write("\r {0:h\\:mm\\:ss\\.f} Mem/Alloc: {1} / {2} MB, GC: {3}/{4}/{5} States: {6:n0} / {7:n0}; {8:n0} / {9:n0}                     ", /* BranchF: {6:0.00} */
                     watch.Elapsed,
-                    Process.GetCurrentProcess().PrivateMemorySize64/(1<<20),
-                    GC.GetTotalAllocatedBytes()/(1<<20),
+                    Process.GetCurrentProcess().PrivateMemorySize64 >> 20,
+                    GC.GetTotalAllocatedBytes() >> 20,
                     GC.CollectionCount(0),
                     GC.CollectionCount(1),
                     GC.CollectionCount(2),
@@ -53,6 +53,9 @@ namespace soko
                     solver.statesToProcessBck.Count,
                     solver.backwardVisitedStates.Count
                     );
+                if (Process.GetCurrentProcess().PrivateMemorySize64 > (4096L << 20)) {
+                    throw new OutOfMemoryException();
+                }
             }
             Console.WriteLine();
         }

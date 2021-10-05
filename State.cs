@@ -1,6 +1,8 @@
 using System.Text;
 using System;
 
+using System.Collections.Generic;
+
 namespace soko
 {
     public class State
@@ -107,8 +109,7 @@ namespace soko
                             continue;
                         }
 
-                        // dead cells only affect push moves
-                        if (reachableTable[boxPos + offset] < BLOCKED && !level.table[boxPos + offset].has(Cell.DeadCell)) {
+                        if (reachableTable[boxPos + offset] < BLOCKED && !level.pushDeadCells[boxPos + offset]) {
                             bool otherSideReachable = reachableTable[boxPos + offset] == currentReachable;
                             moves.AddRangeItem((boxPos, dir, otherSideReachable));
                         }
@@ -146,7 +147,7 @@ namespace soko
                             // from where we got to the current state
                             continue;
                         }
-                        if (reachableTable[boxPos - 2*offset] < BLOCKED) {
+                        if (reachableTable[boxPos - 2*offset] < BLOCKED && !level.pullDeadCells[boxPos - offset]) {
                             bool otherSideReachable = reachableTable[boxPos + offset] == currentReachable;
                             moves.AddRangeItem((boxPos - offset, dir, otherSideReachable));
                         }
@@ -311,5 +312,12 @@ namespace soko
             return sb.ToString();
         }
 
+        public int GetHeuristicPushDistance() {
+            return level.distances.GetHeuristicDistance(boxPositions.list, true);
+        }
+
+        public int GetHeuristicPullDistance() {
+            return level.distances.GetHeuristicDistance(boxPositions.list, false);
+        }
     }
 }
