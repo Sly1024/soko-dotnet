@@ -107,8 +107,10 @@ namespace soko
             return arr;
         }
         
-        public int GetHeuristicDistance(int[] boxPositions, bool push) 
+        public int GetHeuristicDistance(int[] boxPositions, bool push, DynamicList<(int box, int goal, int dist)> distArr) 
         {
+            var boxUsed = new BitArray(numBoxes);
+            var goalUsed = new BitArray(numBoxes);
             distArr.Clear();
             int numBoxesAdded = 0;
             var pushes = push ? level.distances.Pushes : level.distances.Pulls;

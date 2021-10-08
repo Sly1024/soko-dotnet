@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.InteropServices;
 
 namespace soko 
@@ -14,6 +15,8 @@ namespace soko
         private int count = 0;
         private float loadFactor;
         private int sizeTimesLoadFactor;
+
+        private readonly Object sync = new Object();
 
         public int Count { get => count; }
 
@@ -47,29 +50,33 @@ namespace soko
         // linear probing
         private int FindEntry(ulong key)
         {
-            int size = entries.Length;
-            int idx = (int)(key % (ulong)size);
-            ref HashEntry<TValue> item = ref entries[idx];
+            lock (sync) {
+                int size = entries.Length;
+                int idx = (int)(key % (ulong)size);
+                ref HashEntry<TValue> item = ref entries[idx];
 
-            while (item.key != 0 && item.key != key) {
-                if (++idx == size) idx = 0;
-                item = ref entries[idx];
+                while (item.key != 0 && item.key != key) {
+                    if (++idx == size) idx = 0;
+                    item = ref entries[idx];
+                }
+                return idx;
             }
-            return idx;
         }
 
 
         private bool InternalAdd(ulong key, TValue value)
         {
-            int idx = FindEntry(key);
-            if (entries[idx].key == key) return false;
-            entries[idx] = new HashEntry<TValue> { key = key, value = value };
-            return true;
+            lock (sync) {
+                int idx = FindEntry(key);
+                if (entries[idx].key == key) return false;
+                entries[idx] = new HashEntry<TValue> { key = key, value = value };
+                return true;
+            }
         }
 
         private void CheckLoadFactor()
         {
-            if (count > sizeTimesLoadFactor) {
+            if (count > sizeTimesLoadFactor) lock (sync) {
                 var oldEntries = entries;
                 entries = new HashEntry<TValue>[FindPrimeAbove(entries.Length * 7 / 4)];   // 1.75x
                 sizeTimesLoadFactor = (int)(entries.Length * loadFactor);
