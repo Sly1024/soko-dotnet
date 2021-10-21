@@ -29,54 +29,54 @@ namespace soko
 
         public bool TryAdd(ulong key, TValue value)
         {
-            if (InternalAdd(key, value)) {
-                ++count;
-                CheckLoadFactor();
-                return true;
+            /* lock (sync) */ {
+                if (InternalAdd(key, value)) {
+                    ++count;
+                    CheckLoadFactor();
+                    return true;
+                }
+                return false;
             }
-            return false;
         }
 
         public bool ContainsKey(ulong key)
         {
-            return entries[FindEntry(key)].key != 0;
+            /* lock (sync) */ {
+                return entries[FindEntry(key)].key != 0;
+            }
         }
 
         public TValue this[ulong key] 
         {
-            get => entries[FindEntry(key)].value;
+            get { /* lock (sync) */ { return entries[FindEntry(key)].value; } }
         }
 
         // linear probing
         private int FindEntry(ulong key)
         {
-            lock (sync) {
-                int size = entries.Length;
-                int idx = (int)(key % (ulong)size);
-                ref HashEntry<TValue> item = ref entries[idx];
+            int size = entries.Length;
+            int idx = (int)(key % (ulong)size);
+            ref HashEntry<TValue> item = ref entries[idx];
 
-                while (item.key != 0 && item.key != key) {
-                    if (++idx == size) idx = 0;
-                    item = ref entries[idx];
-                }
-                return idx;
+            while (item.key != 0 && item.key != key) {
+                if (++idx == size) idx = 0;
+                item = ref entries[idx];
             }
+            return idx;
         }
 
 
         private bool InternalAdd(ulong key, TValue value)
         {
-            lock (sync) {
-                int idx = FindEntry(key);
-                if (entries[idx].key == key) return false;
-                entries[idx] = new HashEntry<TValue> { key = key, value = value };
-                return true;
-            }
+            int idx = FindEntry(key);
+            if (entries[idx].key == key) return false;
+            entries[idx] = new HashEntry<TValue> { key = key, value = value };
+            return true;
         }
 
         private void CheckLoadFactor()
         {
-            if (count > sizeTimesLoadFactor) lock (sync) {
+            if (count > sizeTimesLoadFactor) {
                 var oldEntries = entries;
                 entries = new HashEntry<TValue>[FindPrimeAbove(entries.Length * 7 / 4)];   // 1.75x
                 sizeTimesLoadFactor = (int)(entries.Length * loadFactor);

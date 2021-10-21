@@ -10,6 +10,11 @@ namespace soko
     using StateTable = CompactHashTable<HashState>;
     using StateTableBack = CompactHashTable<HashState>;
 
+    using StatesToProcess = PriorityQueue<ToProcess>;
+    using StatesToProcessBck = PriorityQueue<ToProcessBck>;
+    // using StatesToProcess = PriorityQueue<ToProcess, int>;
+    // using StatesToProcessBck = PriorityQueue<ToProcessBck, int>;
+
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct HashState {
         public ulong zHash;
@@ -22,13 +27,13 @@ namespace soko
     {
         public ulong state;
         public int moveIdx;
-        public int pushes;
+        // public int pushes;
     }
     public struct ToProcessBck
     {
         public ulong state;
         public int moveIdx;
-        public int pushes;
+        // public int pushes;
         public byte bckStateIdx;
     }
 
@@ -48,8 +53,8 @@ namespace soko
         public MoveRanges movesFwd = new MoveRanges(1000);
         public MoveRanges movesBck = new MoveRanges(1000);
 
-        public PriorityQueue<ToProcess, int> statesToProcess;
-        public PriorityQueue<ToProcessBck, int> statesToProcessBck;
+        public StatesToProcess statesToProcess;
+        public StatesToProcessBck statesToProcessBck;
 
         DynamicList<HashState> sourceAncestors1;
         DynamicList<HashState> targetAncestors1;
@@ -73,8 +78,8 @@ namespace soko
             forwardVisitedStates = new StateTable(1<<17);
             backwardVisitedStates = new StateTableBack(1<<17);
 
-            statesToProcess = new PriorityQueue<ToProcess, int>();
-            statesToProcessBck = new PriorityQueue<ToProcessBck, int>();
+            statesToProcess = new StatesToProcess();
+            statesToProcessBck = new StatesToProcessBck();
 
             // prepare fwd states
             var state = new State(level, level.boxPositions, level.playerPosition);
@@ -83,11 +88,18 @@ namespace soko
             forwardVisitedStates.TryAdd(startStateZ, new HashState());
 
             fwdState = state;
-            statesToProcess.Enqueue(new ToProcess{
+            int pushDistance = fwdState.GetHeuristicPushDistance();
+
+            if (pushDistance >= HeuristicDistances.Unreachable) {
+                throw new InvalidOperationException($"Could not find a suitable box-goal pairing from start position, pushDistance={pushDistance}");
+            }
+
+            statesToProcess.Enqueue(new ToProcess
+            {
                 state = startStateZ,
                 moveIdx = fwdState.GetPossiblePushMoves(movesFwd, (0, 0)), // cameFrom.IsBoxOtherSideReachable == false
-                pushes = 0
-            }, fwdState.GetHeuristicPushDistance());
+                // pushes = 0
+            }, pushDistance);
 
             // prepare bck states
             endStateZs = new List<ulong>();
@@ -99,12 +111,19 @@ namespace soko
                 var endState = new State(level, level.goalPositions, endPlayerPos);
                 var endStateZ = endState.GetZHash();
                 backwardVisitedStates.TryAdd(endStateZ, new HashState());
-                statesToProcessBck.Enqueue(new ToProcessBck{
+                int pullDistance = endState.GetHeuristicPullDistance();
+
+                if (pullDistance >= HeuristicDistances.Unreachable) {
+                    throw new InvalidOperationException($"Could not find a suitable box-goal pairing from end position, pullDistance={pullDistance}");
+                }
+
+                statesToProcessBck.Enqueue(new ToProcessBck
+                {
                     bckStateIdx = (byte)bckStates.Count,
                     state = endStateZ,
                     moveIdx = endState.GetPossiblePullMoves(movesBck, (0, 0)), // cameFrom.IsBoxOtherSideReachable == false
-                    pushes = 0
-                }, endState.GetHeuristicPullDistance());
+                    // pushes = 0
+                }, pullDistance);
                 endStateZs.Add(endStateZ);
                 bckStates.Add(endState);
             }
@@ -124,7 +143,8 @@ namespace soko
             // });
 
             return Task.WhenAny(new [] {
-                Task.Run(() => { while (commonState == 0) SolveForwardOneStep(); }),
+                // !!! HeuristicDistance re-uses private BitArrays, won't work with 2 threads!!!
+                // Task.Run(() => { while (commonState == 0) SolveForwardOneStep(); }),
                 Task.Run(() => { while (commonState == 0) SolveReverseOneStep(); }),
             });
         }
@@ -135,7 +155,7 @@ namespace soko
         {
             if (statesToProcess.Count > 0) {
                 var toProcess = statesToProcess.Dequeue();
-                var pushes = toProcess.pushes + 1;
+                // var pushes = toProcess.pushes + 1;
                 ulong stateZHash = toProcess.state;
 
                 MoveStateInto(fwdState, stateZHash, forwardVisitedStates, false, sourceAncestors1, targetAncestors1);
@@ -150,7 +170,7 @@ namespace soko
                     move = movesFwd.items[mIdx++];
                     fwdState.ApplyPushMove(move);
 
-                    if (!fwdState.isBoxDeadLocked(move.NewBoxPos)) {
+                    if (!fwdState.reachable.isBoxDeadLocked(move.NewBoxPos)) {
                         var newZHash = fwdState.GetZHash();
 
                         if (forwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
@@ -160,8 +180,13 @@ namespace soko
                             }
                             var moveIdx2 = fwdState.GetPossiblePushMoves(movesFwd, move);
                             if (moveIdx2 >= 0) {
-                                statesToProcess.Enqueue(new ToProcess { state = newZHash, moveIdx = moveIdx2, pushes = pushes },
-                                0 + fwdState.GetHeuristicPushDistance());
+                                int pushDistance = fwdState.GetHeuristicPushDistance();
+                                if (pushDistance < HeuristicDistances.Unreachable) {
+                                    statesToProcess.Enqueue(
+                                        new ToProcess { state = newZHash, moveIdx = moveIdx2/* , pushes = pushes */ },
+                                        0 + pushDistance
+                                    );
+                                }
                             }
                         }
                     }
@@ -235,7 +260,7 @@ namespace soko
         {
             if (statesToProcessBck.Count > 0) {
                 var toProcess = statesToProcessBck.Dequeue();
-                var pushes = toProcess.pushes + 1;
+                // var pushes = toProcess.pushes + 1;
                 ulong stateZHash = toProcess.state;
 
                 var bckState = bckStates[toProcess.bckStateIdx];
@@ -261,14 +286,17 @@ namespace soko
                         }
                         var moveIdx2 = bckState.GetPossiblePullMoves(movesBck, move);
                         if (moveIdx2 >= 0) {
-                            statesToProcessBck.Enqueue(
-                                new ToProcessBck { state = newZHash, moveIdx = moveIdx2, pushes = pushes, bckStateIdx = toProcess.bckStateIdx },
-                                0 + bckState.GetHeuristicPullDistance()
-                            );
+                            int pullDistance = bckState.GetHeuristicPullDistance();
+                            if (pullDistance < HeuristicDistances.Unreachable) {
+                                statesToProcessBck.Enqueue(
+                                    new ToProcessBck { state = newZHash, moveIdx = moveIdx2, /* pushes = pushes, */ bckStateIdx = toProcess.bckStateIdx },
+                                    0 + pullDistance
+                                );
+                            }
                         }
                     }
 
-                    bckState.ApplyPushMove(move);
+                    if (!move.IsLast) bckState.ApplyPushMove(move);
                 } while (!move.IsLast);
                 movesBck.RemoveRange(toProcess.moveIdx, mIdx);
             }
@@ -328,7 +356,7 @@ namespace soko
 
             Console.WriteLine(solution);
             int pushCount = forwardSteps.Count + backwardSteps.Count;
-            Console.WriteLine($"{pushCount} pushes, {solution.Length - pushCount} moves");
+            Console.WriteLine($"{pushCount} ({forwardSteps.Count}/{backwardSteps.Count}) pushes, {solution.Length - pushCount} moves");
         }
 
         private int WriteSolutionMoves(StringBuilder sb, List<HashState> steps) 
@@ -343,7 +371,7 @@ namespace soko
                 sb.Append(fwdState.FindPlayerPath(playerPos, step.move));
                 sb.Append(Move.PushCodeForDirection[step.move.Direction]);
                 fwdState.ApplyPushMove(step.move);
-                playerPos = fwdState.playerPosition;
+                playerPos = fwdState.reachable.playerPosition;
             }
 
             return playerPos;

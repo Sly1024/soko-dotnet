@@ -209,3 +209,61 @@ Dead: 24 Free: 46
 307974/437806 moves generated
 rdrRdddrruuLUlDruUruulLulllldDuurrrrdrrddldlllulLuuurrrrdrDululldRlulldddrrdrrrdrddllUUruUruulDDDuuuLulldRlullddddddldlluRRdrUUUUrrdrRdddlluLLLrrrdrruLLrruulDrddrruuLLrUUruulDDDlllullLLdlluRdrUrrrrdrrruuuLulllldDuurrrrdrdddlllulLuuurrdLulDrrurrdLLrrrdddlllullLLLrrrrrdrrruuulllulldDuurrdLulDrrrrrdddldddlluRdrUdrruLUddlluRdrruulUUruulDDDlDullulLdddRRdrrUUddllulluuuLLdllluurrurDlllddrrUdlluRdrrUrrrrdrRllulllldlluRRRRdddrrdrruuulluLrdrrdddllullldlluRRdrUrrdrruLLrruulDrddrruuLLrUUruulDDDldddlluLLLrrrdrruuullulLLLLrrrrrdrrdddllullUUddldlluRRdrUrrdrruLLrruulDrddlluLLLrrrdrUrdrruLLuullulLLLdllluururrDLulldddrrrUdllluuurrdDuulldRlddrUUluRddrrrrrrdrrdddllullUUddldlluRRdrUrrdrrrruuLdlLLrrruullDRurDlddlluRdrUluRldlLLLrrrrrdrruuLLddrUluullulLLLLLrrrrrrdrrddllllUUddrrrruulDrurDlddllullldlluRRdrUrrdrruLLrrdrUruLdlUldlLLLrrrruuRdrUUruulDDDDllululLLLLrrrrrdrddlllUUddrrruululLLLdLLUUluurrrdDuullDDuurrddLDRRluuulllddRuurrdddrRdddrrrrdrUruLLulDrddllullldlluRRdrUrrdrruLLruuluLrdrddlLLLrrrruululLLLuuLLulDrrrdddLruuLrddlUUrdrrrrdrddlllUUddrrruululLLLdlUruuLLrrddlUruLrddrrdddldlluRRdrUUUddrrruululLLLdlUUrdrrrrdrrruuulllllDurrrrrdddlllulLLLulUrdddlUUruuLLrrddlUruL
 251 pushes, 906 moves
+
+
+*** A* search (pushes + heurDist) + 2 thread FWD + BCK
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net6.0\soko.exe .\levels\orig_1.sok 
+Dead: 15 Free: 41
+Time: 00:00:00.0889378
+97 (60/37) pushes, 500 moves
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net6.0\soko.exe .\levels\orig_17.sok
+Dead: 34 Free: 53
+ 0:01:06.1 Mem/Alloc: 570 / 2728 MB, GC: 1240/14/8 States: 768 061 / 6 104 684; 605 104 / 4 469 454                     
+ Time: 00:01:06.6407749
+215 (83/132) pushes, 556 moves
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net6.0\soko.exe .\levels\orig_2.sok
+Dead: 24 Free: 46
+ 0:00:17.6 Mem/Alloc: 391 / 1524 MB, GC: 550/7/7 States: 1 647 967 / 2 288 125; 1 556 724 / 2 442 894                     
+ Time: 00:00:17.9320451
+135 (67/68) pushes, 743 moves
+
+*** A* search (0 + heurDist) + 2 thread FWD + BCK
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net6.0\soko.exe .\levels\orig_1.sok
+Time: 00:00:00.0425985
+105 (15/90) pushes, 321 moves
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net6.0\soko.exe .\levels\orig_17.sok
+ 0:00:01.0 Mem/Alloc: 41 / 98 MB, GC: 45/3/2 States: 4 079 / 146 208; 81 991 / 261 890                     Time: 00:00:01.3827249
+229 (3/226) pushes, 530 moves
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net6.0\soko.exe .\levels\orig_2.sok 
+ 0:00:00.5 Mem/Alloc: 25 / 32 MB, GC: 13/1/1 States: 10 209 / 54 631; 33 368 / 69 928                     Time: 00:00:00.7450400
+239 (11/228) pushes, 844 moves
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net6.0\soko.exe .\levels\orig_43.sok
+ 0:01:13.3 Mem/Alloc: 992 / 4241 MB, GC: 1621/12/9 States: 379 123 / 4 484 468; 4 772 377 / 9 999 476                     Time: 00:01:13.4548395
+296 (1/295) pushes, 1624 moves
+
+*** A* (0 + heurDist) + 1 thread BCK + .NET6 PriorityQueue 
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net6.0\soko.exe .\levels\orig_17.sok
+0:00:01.0 Mem/Alloc: 35 / 73 MB, GC: 33/2/2 States: 1 / 1; 89 575 / 297 996                     Time: 00:00:01.1607105
+229 (0/229) pushes, 530 moves
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net6.0\soko.exe .\levels\orig_43.sok
+ 0:00:08.7 Mem/Alloc: 149 / 556 MB, GC: 214/6/6 States: 1 / 1; 745 464 / 2 083 563                     Time: 00:00:09.0717427
+260 (0/260) pushes, 1478 moves
+
+*** A* (0 + heurDist) + 1 thread BCK + custom PriorityQueue
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net6.0\soko.exe .\levels\orig_17.sok
+ 0:00:00.5 Mem/Alloc: 39 / 53 MB, GC: 11/3/2 States: 1 / 1; 51 054 / 173 174                     Time: 00:00:00.8839213
+267 (0/267) pushes, 672 moves
+
+PS C:\Prog\dotnet\soko> .\bin\Release\net6.0\soko.exe .\levels\orig_43.sok
+ 0:00:25.0 Mem/Alloc: 488 / 1760 MB, GC: 644/10/8 States: 1 / 1; 1 989 272 / 6 347 260                     Time: 00:00:25.1399124
+298 (0/298) pushes, 1578 moves

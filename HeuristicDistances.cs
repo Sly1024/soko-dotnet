@@ -15,10 +15,17 @@ namespace soko
         public int[][] Pulls;
 
         public int numBoxes;
+        // This is a value that indicates the cell is unreachable by pushes or pulls
+        // It has to be > T*numBoxes - where T is the max push/pull distance, 
+        // proportional to the TableSize (hence T). The following numbers are just assumptions:
+        // since the table size is less than 128x128/2 = 8K, the numBoxes < 512,
+        // I assume it's OK if Unreachable > 8K * 512, that leaves room for 
+        // adding 512 (numBoxes) pieces of Unreachable without running out of int.MaxValue
+        public const int Unreachable = 1 << 22;
 
         private DynamicList<(int box, int goal, int dist)> distArr;
-        private BitArray boxUsed;
-        private BitArray goalUsed;
+        private FastBitArray boxUsed;
+        private FastBitArray goalUsed;
         private BoxGoalDistComparer bgdComparer = new BoxGoalDistComparer();
 
         public HeuristicDistances(Level level)
@@ -38,8 +45,8 @@ namespace soko
             }
 
             distArr = new DynamicList<(int box, int goal, int dist)>(numBoxes * numBoxes);
-            boxUsed = new BitArray(numBoxes);
-            goalUsed = new BitArray(numBoxes);
+            boxUsed = new FastBitArray(numBoxes);
+            goalUsed = new FastBitArray(numBoxes);
         }
 
         private void TryPullMoves(int pos, int goalIndex)
@@ -92,7 +99,7 @@ namespace soko
 
         private int GetDistance(int[][] distances, int pos, int index)
         {
-            return distances[pos] == null ? int.MaxValue : distances[pos][index];
+            return distances[pos] == null ? Unreachable : distances[pos][index];
         }
 
         private void SetDistance(int[][] distances, int pos, int index, int distance)
@@ -103,14 +110,12 @@ namespace soko
         private int[] GenerateDistanceArray()
         {
             var arr = new int[numBoxes];
-            for (var i = 0; i < arr.Length; i++) arr[i] = int.MaxValue;
+            for (var i = 0; i < arr.Length; i++) arr[i] = Unreachable;
             return arr;
         }
         
         public int GetHeuristicDistance(int[] boxPositions, bool push, DynamicList<(int box, int goal, int dist)> distArr) 
         {
-            var boxUsed = new BitArray(numBoxes);
-            var goalUsed = new BitArray(numBoxes);
             distArr.Clear();
             int numBoxesAdded = 0;
             var pushes = push ? level.distances.Pushes : level.distances.Pulls;
@@ -121,7 +126,7 @@ namespace soko
                 if (level.table[boxPos].has(push ? Cell.Goal : Cell.Box)) continue;
 
                 var distances = pushes[boxPos];
-                for (var goalIdx = 0; goalIdx < distances.Length; goalIdx++)
+                for (var goalIdx = 0; goalIdx < numBoxes; goalIdx++)
                 {
                     distArr.Add((boxIdx, goalIdx, distances[goalIdx]));
                 }
@@ -129,8 +134,8 @@ namespace soko
             }
             Array.Sort(distArr.items, 0, distArr.idx, bgdComparer);
 
-            boxUsed.SetAll(false);
-            goalUsed.SetAll(false);
+            boxUsed.Clear();
+            goalUsed.Clear();
 
             int sumDistance = 0;
 

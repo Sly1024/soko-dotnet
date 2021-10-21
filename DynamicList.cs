@@ -51,6 +51,7 @@ namespace soko
             set {
                 EnsureCapacity(idx+1);
                 items[idx] = value;
+                if (idx+1 > this.idx) this.idx = idx+1;
             }
         }
     }
