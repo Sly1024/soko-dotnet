@@ -104,11 +104,11 @@ namespace soko
             Console.WriteLine($"PlayerPos: {playerPosition}");
         }
 
-        public bool isBoxDeadLocked(int boxPos)
+        public bool isBoxPushDeadLocked(int boxPos)
         {
             markedPositions.ResetMarked();
             
-            if (isBoxMovable(boxPos)) return false;
+            if (isBoxPushable(boxPos)) return false;
 
             // we have a list of non-movable boxes, need to check if they're all on goal positions
             var blockedBoxes = markedPositions.list;
@@ -119,7 +119,7 @@ namespace soko
             return false;
         }
 
-        private bool isBoxMovable(int boxPos) 
+        private bool isBoxPushable(int boxPos) 
         {
             if (markedPositions.IsMarked(boxPos)) return false;
 
@@ -147,9 +147,73 @@ namespace soko
             // #$      #
             // Now (... || H1 < BLOCKED) fails because there's a WALL to the left of the box in the corner, but we still need to mark the 
             // box on the right as blocked so we can check, and if it's not on a goal position, this is a deadlock!
-            if ((H1 == BOX && isBoxMovable(boxPos - 1) || H1 < BLOCKED) & (H2 == BOX && isBoxMovable(boxPos + 1) || H2 < BLOCKED) ||
-                (V1 == BOX && isBoxMovable(boxPos - w) || V1 < BLOCKED) & (V2 == BOX && isBoxMovable(boxPos + w) || V2 < BLOCKED))
+            if ((H1 == BOX ? isBoxPushable(boxPos - 1) : H1 != WALL) & (H2 == BOX ? isBoxPushable(boxPos + 1) : H2 != WALL) ||
+                (V1 == BOX ? isBoxPushable(boxPos - w) : V1 != WALL) & (V2 == BOX ? isBoxPushable(boxPos + w) : V2 != WALL))
             {
+                markedPositions.UnmarkPos(boxPos);
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool isBoxPullDeadLocked(int boxPos)
+        {
+            markedPositions.ResetMarked();
+            
+            if (isBoxPullable(boxPos)) return false;
+
+            // we have a list of non-movable boxes, need to check if they're all on goal positions
+            var blockedBoxes = markedPositions.list;
+            for (int i = markedPositions.count-1; i >= 0; --i) {
+                if (!level.table[blockedBoxes[i]].has(Cell.Box)) return true;
+            }
+
+            return false;
+        }
+
+        private bool isBoxPullable(int boxPos) 
+        {
+            if (markedPositions.IsMarked(boxPos)) return false;
+
+            // if the next 2 cells are free in either of the 4 directions, then it's movable
+            int L1 = table[boxPos - 1];
+            if (L1 < BLOCKED && table[boxPos - 2] < BLOCKED) return true;
+
+            int R1 = table[boxPos + 1];
+            if (R1 < BLOCKED && table[boxPos + 2] < BLOCKED) return true;
+
+            var w = width;
+            int U1 = table[boxPos - w];
+            if (U1 < BLOCKED && table[boxPos - w - w] < BLOCKED) return true;
+
+            int D1 = table[boxPos + w];
+            if (D1 < BLOCKED && table[boxPos + w + w] < BLOCKED) return true;
+
+            // temporarily mark the box so we avoid recursive loops
+            markedPositions.MarkPos(boxPos);
+
+            // at this point we know that all 4 directions are blocked, need to check if the neighbour boxes are movable
+
+            // Note: The middle "&" is NOT a short-circuiting operator.
+            // We need that so that isBoxPullabe() is called for the other box even if the left-hand is false
+            // to mark the boxes "blocked" and isBoxDeadLocked() will check if they are on a goal position
+
+            int L2, R2, U2, D2;
+
+            if (// left
+                (L1 == BOX ? isBoxPullable(boxPos - 1) : L1 != WALL) &
+                (L1 != WALL && ((L2 = table[boxPos - 2]) == BOX ? isBoxPullable(boxPos - 2) : L2 != WALL)) ||
+                // right
+                (R1 == BOX ? isBoxPullable(boxPos + 1) : R1 != WALL) &
+                (R1 != WALL && ((R2 = table[boxPos + 2]) == BOX ? isBoxPullable(boxPos + 2) : R2 != WALL)) ||
+                // up
+                (U1 == BOX ? isBoxPullable(boxPos - w) : U1 != WALL) &
+                (U1 != WALL && ((U2 = table[boxPos - w - w]) == BOX ? isBoxPullable(boxPos - w - w) : U2 != WALL)) ||
+                // down
+                (D1 == BOX ? isBoxPullable(boxPos + w) : D1 != WALL) &
+                (D1 != WALL && ((D2 = table[boxPos + w + w]) == BOX ? isBoxPullable(boxPos + w + w) : D2 != WALL))
+            ) {
                 markedPositions.UnmarkPos(boxPos);
                 return true;
             }

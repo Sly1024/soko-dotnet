@@ -26,10 +26,16 @@ namespace soko
             watch = new Stopwatch();
             watch.Start();
 
-            Task.WhenAny(new [] {
-                solver.Solve().ContinueWith((_) => { finished = true; }),
-                PrintStats()
-            }).Wait();
+            try {
+                Task.WhenAny(new [] {
+                    solver.Solve().ContinueWith((_) => { finished = true; }),
+                    PrintStats()
+                }).Wait();
+            } catch (AggregateException ae) {
+                foreach (var e in ae.InnerExceptions) {
+                    System.Console.WriteLine(e.Message);
+                }
+            }
 
             watch.Stop();
             Console.WriteLine("Time: " + watch.Elapsed);

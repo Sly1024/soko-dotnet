@@ -10,10 +10,10 @@ namespace soko
     using StateTable = CompactHashTable<HashState>;
     using StateTableBack = CompactHashTable<HashState>;
 
-    using StatesToProcess = PriorityQueue<ToProcess>;
-    using StatesToProcessBck = PriorityQueue<ToProcessBck>;
-    // using StatesToProcess = PriorityQueue<ToProcess, int>;
-    // using StatesToProcessBck = PriorityQueue<ToProcessBck, int>;
+    // using StatesToProcess = PriorityQueue<ToProcess>;
+    // using StatesToProcessBck = PriorityQueue<ToProcessBck>;
+    using StatesToProcess = PriorityQueue<ToProcess, int>;
+    using StatesToProcessBck = PriorityQueue<ToProcessBck, int>;
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct HashState {
@@ -27,13 +27,11 @@ namespace soko
     {
         public ulong state;
         public int moveIdx;
-        // public int pushes;
     }
     public struct ToProcessBck
     {
         public ulong state;
         public int moveIdx;
-        // public int pushes;
         public byte bckStateIdx;
     }
 
@@ -98,7 +96,6 @@ namespace soko
             {
                 state = startStateZ,
                 moveIdx = fwdState.GetPossiblePushMoves(movesFwd, (0, 0)), // cameFrom.IsBoxOtherSideReachable == false
-                // pushes = 0
             }, pushDistance);
 
             // prepare bck states
@@ -122,7 +119,6 @@ namespace soko
                     bckStateIdx = (byte)bckStates.Count,
                     state = endStateZ,
                     moveIdx = endState.GetPossiblePullMoves(movesBck, (0, 0)), // cameFrom.IsBoxOtherSideReachable == false
-                    // pushes = 0
                 }, pullDistance);
                 endStateZs.Add(endStateZ);
                 bckStates.Add(endState);
@@ -170,7 +166,7 @@ namespace soko
                     move = movesFwd.items[mIdx++];
                     fwdState.ApplyPushMove(move);
 
-                    if (!fwdState.reachable.isBoxDeadLocked(move.NewBoxPos)) {
+                    if (!fwdState.reachable.isBoxPushDeadLocked(move.NewBoxPos)) {
                         var newZHash = fwdState.GetZHash();
 
                         if (forwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
@@ -183,8 +179,8 @@ namespace soko
                                 int pushDistance = fwdState.GetHeuristicPushDistance();
                                 if (pushDistance < HeuristicDistances.Unreachable) {
                                     statesToProcess.Enqueue(
-                                        new ToProcess { state = newZHash, moveIdx = moveIdx2/* , pushes = pushes */ },
-                                        0 + pushDistance
+                                        new ToProcess { state = newZHash, moveIdx = moveIdx2 },
+                                        pushDistance
                                     );
                                 }
                             }
@@ -276,27 +272,28 @@ namespace soko
                 {
                     move = movesBck.items[mIdx++];
                     bckState.ApplyPullMove(move);
+                    if (!bckState.reachable.isBoxPullDeadLocked(move.BoxPos)) {
+                        var newZHash = bckState.GetZHash();
 
-                    var newZHash = bckState.GetZHash();
-
-                    if (backwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
-                        if (forwardVisitedStates.ContainsKey(newZHash)) {
-                            commonState = newZHash;
-                            return;
-                        }
-                        var moveIdx2 = bckState.GetPossiblePullMoves(movesBck, move);
-                        if (moveIdx2 >= 0) {
-                            int pullDistance = bckState.GetHeuristicPullDistance();
-                            if (pullDistance < HeuristicDistances.Unreachable) {
-                                statesToProcessBck.Enqueue(
-                                    new ToProcessBck { state = newZHash, moveIdx = moveIdx2, /* pushes = pushes, */ bckStateIdx = toProcess.bckStateIdx },
-                                    0 + pullDistance
-                                );
+                        if (backwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
+                            if (forwardVisitedStates.ContainsKey(newZHash)) {
+                                commonState = newZHash;
+                                return;
+                            }
+                            var moveIdx2 = bckState.GetPossiblePullMoves(movesBck, move);
+                            if (moveIdx2 >= 0) {
+                                int pullDistance = bckState.GetHeuristicPullDistance();
+                                if (pullDistance < HeuristicDistances.Unreachable) {
+                                    statesToProcessBck.Enqueue(
+                                        new ToProcessBck { state = newZHash, moveIdx = moveIdx2, bckStateIdx = toProcess.bckStateIdx },
+                                        pullDistance
+                                    );
+                                }
                             }
                         }
                     }
 
-                    if (!move.IsLast) bckState.ApplyPushMove(move);
+                    bckState.ApplyPushMove(move);
                 } while (!move.IsLast);
                 movesBck.RemoveRange(toProcess.moveIdx, mIdx);
             }
@@ -354,7 +351,7 @@ namespace soko
             WriteReversedSolutionMoves(sb, backwardSteps, playerPos, bckState);
             string solution = sb.ToString();
 
-            Console.WriteLine(solution);
+            // Console.WriteLine(solution);
             int pushCount = forwardSteps.Count + backwardSteps.Count;
             Console.WriteLine($"{pushCount} ({forwardSteps.Count}/{backwardSteps.Count}) pushes, {solution.Length - pushCount} moves");
         }
