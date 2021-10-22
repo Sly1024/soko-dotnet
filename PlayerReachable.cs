@@ -1,5 +1,6 @@
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace soko
@@ -35,6 +36,13 @@ namespace soko
             FillTable(level, boxPositions);
 
             markedPositions = new MarkedList(table.Length, boxPositions.Length);
+        }
+
+        public void CopyFrom(PlayerReachable other) {
+            playerPosition = other.playerPosition;
+            Array.Copy(other.table, table, table.Length);
+            currentReachable = other.currentReachable;
+            valid = other.valid;
         }
 
         private void FillTable(Level level, int[] boxPositions) {
@@ -177,43 +185,28 @@ namespace soko
             if (markedPositions.IsMarked(boxPos)) return false;
 
             // if the next 2 cells are free in either of the 4 directions, then it's movable
-            int L1 = table[boxPos - 1];
-            if (L1 < BLOCKED && table[boxPos - 2] < BLOCKED) return true;
-
-            int R1 = table[boxPos + 1];
-            if (R1 < BLOCKED && table[boxPos + 2] < BLOCKED) return true;
+            if (table[boxPos - 1] < BLOCKED && table[boxPos - 2] < BLOCKED) return true;
+            if (table[boxPos + 1] < BLOCKED && table[boxPos + 2] < BLOCKED) return true;
 
             var w = width;
-            int U1 = table[boxPos - w];
-            if (U1 < BLOCKED && table[boxPos - w - w] < BLOCKED) return true;
-
-            int D1 = table[boxPos + w];
-            if (D1 < BLOCKED && table[boxPos + w + w] < BLOCKED) return true;
+            if (table[boxPos - w] < BLOCKED && table[boxPos - w - w] < BLOCKED) return true;
+            if (table[boxPos + w] < BLOCKED && table[boxPos + w + w] < BLOCKED) return true;
 
             // temporarily mark the box so we avoid recursive loops
             markedPositions.MarkPos(boxPos);
 
             // at this point we know that all 4 directions are blocked, need to check if the neighbour boxes are movable
 
-            // Note: The middle "&" is NOT a short-circuiting operator.
-            // We need that so that isBoxPullabe() is called for the other box even if the left-hand is false
-            // to mark the boxes "blocked" and isBoxDeadLocked() will check if they are on a goal position
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            bool isPullable(int box, int dirOff) {
+                int T2, T1 = table[box + dirOff];
+                return  T1 != WALL &&
+                    (T1 != BOX || isBoxPullable(box + dirOff)) &&
+                    (T2 = table[box + dirOff + dirOff]) != WALL &&
+                    (T2 != BOX || isBoxPullable(box + dirOff + dirOff));
+            }
 
-            int L2, R2, U2, D2;
-
-            if (// left
-                (L1 == BOX ? isBoxPullable(boxPos - 1) : L1 != WALL) &
-                (L1 != WALL && ((L2 = table[boxPos - 2]) == BOX ? isBoxPullable(boxPos - 2) : L2 != WALL)) ||
-                // right
-                (R1 == BOX ? isBoxPullable(boxPos + 1) : R1 != WALL) &
-                (R1 != WALL && ((R2 = table[boxPos + 2]) == BOX ? isBoxPullable(boxPos + 2) : R2 != WALL)) ||
-                // up
-                (U1 == BOX ? isBoxPullable(boxPos - w) : U1 != WALL) &
-                (U1 != WALL && ((U2 = table[boxPos - w - w]) == BOX ? isBoxPullable(boxPos - w - w) : U2 != WALL)) ||
-                // down
-                (D1 == BOX ? isBoxPullable(boxPos + w) : D1 != WALL) &
-                (D1 != WALL && ((D2 = table[boxPos + w + w]) == BOX ? isBoxPullable(boxPos + w + w) : D2 != WALL))
-            ) {
+            if (isPullable(boxPos, -1) || isPullable(boxPos, 1) || isPullable(boxPos, w) || isPullable(boxPos, -w)) {
                 markedPositions.UnmarkPos(boxPos);
                 return true;
             }

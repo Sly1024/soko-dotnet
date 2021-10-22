@@ -263,6 +263,8 @@ namespace soko
 
                 MoveStateInto(bckState, stateZHash, backwardVisitedStates, true, sourceAncestors2, targetAncestors2);
 
+                bckState.StorePrevReachable();
+                
                 // Console.WriteLine("Processing state...");
                 // fullState.PrintTable();
 

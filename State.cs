@@ -9,7 +9,7 @@ namespace soko
         BoxPositions boxPositions;
         ulong boxZhash;
 
-        public PlayerReachable reachable;
+        public PlayerReachable reachable, prevReachable;
 
         public State(Level level, int[] initialBoxPositions, int initialPlayerPosition)
         {
@@ -18,6 +18,7 @@ namespace soko
 
             boxZhash = level.GetZHashForBoxes(initialBoxPositions);
             reachable = new PlayerReachable(level, initialBoxPositions, initialPlayerPosition);
+            prevReachable = new PlayerReachable(level, initialBoxPositions, initialPlayerPosition);
         }
 
         public int GetPossiblePushMoves(MoveRanges moves, Move cameFrom)
@@ -193,6 +194,11 @@ namespace soko
 
         public int GetHeuristicPullDistance() {
             return level.distances.GetHeuristicDistance(boxPositions.list, false, distArr2);
+        }
+
+        public void StorePrevReachable() {
+            reachable.CalculateMap();
+            prevReachable.CopyFrom(reachable);
         }
     }
 }
