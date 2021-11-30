@@ -16,12 +16,12 @@ namespace soko
 
         public ushort encoded;
 
-        public int Direction { get => encoded & 3; }    // Last 2 bits
-        public int BoxPos { get => (encoded >> 2) & ((1<<12) - 1); }    // next 12 bits
-        public bool IsBoxOtherSideReachable { get => ((encoded >> 14) & 1) == 1; } // 14. bit
-        public bool IsLast { get => encoded >> 15 == 1; }   // first (15.) bit
+        public int Direction => encoded & 3;                    // Last 2 bits
+        public int BoxPos => (encoded >> 2) & ((1<<12) - 1);     // next 12 bits
+        public bool IsBoxOtherSideReachable => ((encoded >> 14) & 1) == 1; // 14. bit
+        public bool IsLast => encoded >> 15 == 1;                   // first (15.) bit
 
-        public int NewBoxPos { get => BoxPos + Level.DirOffset[Direction]; }
+        public int NewBoxPos => BoxPos + Level.DirOffset[Direction]; 
 
         public void SetLastBit()
         {

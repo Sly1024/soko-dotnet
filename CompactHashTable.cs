@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.InteropServices;
 
 namespace soko 
@@ -15,6 +16,8 @@ namespace soko
         private float loadFactor;
         private int sizeTimesLoadFactor;
 
+        private readonly Object sync = new Object();
+
         public int Count { get => count; }
 
         public CompactHashTable(int minimumSize, float loadFactor = 0.75f)
@@ -26,22 +29,26 @@ namespace soko
 
         public bool TryAdd(ulong key, TValue value)
         {
-            if (InternalAdd(key, value)) {
-                ++count;
-                CheckLoadFactor();
-                return true;
+            /* lock (sync) */ {
+                if (InternalAdd(key, value)) {
+                    ++count;
+                    CheckLoadFactor();
+                    return true;
+                }
+                return false;
             }
-            return false;
         }
 
         public bool ContainsKey(ulong key)
         {
-            return entries[FindEntry(key)].key != 0;
+            /* lock (sync) */ {
+                return entries[FindEntry(key)].key != 0;
+            }
         }
 
         public TValue this[ulong key] 
         {
-            get => entries[FindEntry(key)].value;
+            get { /* lock (sync) */ { return entries[FindEntry(key)].value; } }
         }
 
         // linear probing
