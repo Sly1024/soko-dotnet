@@ -67,7 +67,7 @@ namespace soko
             // if IsBoxOtherSideReachable is false, we don't want to calculate these, just leave them as 0
             if (cameFrom.IsBoxOtherSideReachable) {
                 cameFromOffset = Level.DirOffset[cameFrom.Direction];
-                cameFromBoxPos = cameFrom.BoxPos - cameFromOffset;
+                cameFromBoxPos = cameFrom.BoxPos;
             }
 
             moves.StartAddRange();
@@ -196,7 +196,7 @@ namespace soko
             return level.distances.GetHeuristicDistance(boxPositions.list, false, distArr2);
         }
 
-        public void StorePrevReachable() {
+        public void CopyPrevReachable() {
             reachable.CalculateMap();
             prevReachable.CopyFrom(reachable);
         }

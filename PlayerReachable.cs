@@ -199,11 +199,12 @@ namespace soko
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             bool isPullable(int box, int dirOff) {
-                int T2, T1 = table[box + dirOff];
-                return  T1 != WALL &&
-                    (T1 != BOX || isBoxPullable(box + dirOff)) &&
-                    (T2 = table[box + dirOff + dirOff]) != WALL &&
-                    (T2 != BOX || isBoxPullable(box + dirOff + dirOff));
+                int T1 = table[box + dirOff];
+                if (T1 == WALL) return false;
+
+                int T2 = table[box + dirOff + dirOff];
+                return (T1 != BOX || isBoxPullable(box + dirOff)) &   // <- NOT short-circuiting (single) "&"
+                    (T2 != WALL && (T2 != BOX || isBoxPullable(box + dirOff + dirOff)));
             }
 
             if (isPullable(boxPos, -1) || isPullable(boxPos, 1) || isPullable(boxPos, w) || isPullable(boxPos, -w)) {
