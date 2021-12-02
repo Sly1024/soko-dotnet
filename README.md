@@ -8,7 +8,7 @@ dotnet build -c Release
 
 Run:
 ```
-.\bin\Release\net5.0\soko.exe .\levels\orig_1.sok
+.\bin\Release\net6.0\soko.exe .\levels\orig_1.sok
 ```
 
 ## Phase 1 - Simple Brute-force
@@ -92,6 +92,11 @@ these in the `GetPossibleMoves` function. This only applies to *push moves*. A p
 
 Note: Even though dead cell detection only filters out moves/states from a forward solve, it still affects the dual
 forward + backward solve because the two threads reach the common state sooner with less visited states on both sides.
+
+EDIT: I found another (better?) way to detect dead cells. A dead cell is a cell from which you cannot reach any of the goal 
+positions with push moves. We can simulate pulling a box (on an empty board) from each goal position into all possible cells.
+The cells that we cannot reach this way are the push-dead cells. The same idea works for detecting pull-dead cells, 
+just try pushing boxes from each initial box position.
 
 ## Phase 5 - Zobrist hashes and some
 
@@ -179,4 +184,105 @@ cases where there are large empty spaces to fill.
 
 I settled with a slightly improved 4-way fill - inlined the testing condition, which performs well for now. I have plans to 
 reduce the use of flood-fill in the future.
+
+## Phase 6 - Deadlocks and A* search
+
+### Freeze deadlock detection
+
+The basic idea is that we should detect a case when some boxes are not movable and the level cannot be solved.
+See a [good description here](http://sokobano.de/wiki/index.php?title=Deadlocks#Freeze_deadlocks).
+If we can detect a situation like this, we can ignore the current state, we don't need to expand it.
+Deadlock detection is possible in both forward and backward solves.
+First we need to detect if a box is immovable and then check if it rests on a goal position. There are cases when multiple 
+boxes constitute a deadlock pattern.
+
+#### Forward case - push deadlock
+
+A box is not movable if it is blocked both horizontally and vertically. Blocking can occur either by a wall being next to it, 
+or another box that cannot be moved. If the neighbor box can be moved, we treat it as if it was an empty cell. 
+The opposite directions (left-right, up-down) have the same condition: the cell next to the box in both directions is empty. 
+For example: if both the left and right neighbor of a box is empty, it is pushable in both left and right directions (horizontally).
+
+Example deadlock: two boxes next to each other at a wall. If they are not on goal positions then this is a deadlock situation.
+```
+####
+ $$
+```
+Let's assume we just pushed the left box, so we first examine if the box is movable:
+- it is not movable vertically because of the wall above it
+- it is movable horizontall ONLY IF the right box is movable
+Next we need to check if the right box is movable:
+- it is not movable vertically because of the wall above it
+- it is movable horizontall ONLY IF the left box is movable
+
+You can see that this is a circular dependency between the two boxes, and that means neither can be moved.
+
+The deadlock check is implemented with a recursive function that does simple checks first (is there a wall blocking the box, 
+or an empty cell on both sides), then if it finds that there is a box next to the current box, it needs to calculate if 
+that neighbor box is movable by calling itself.
+
+How do we avoid infinite recursion here? We mark the boxes that we're currently visiting - just like in a DFS (depth-first search) in a graph.
+This means when the recursive calls circle back and ask `isBoxMovable(box)` for one of the boxes that we're currently evaluating (marked), 
+then the answer is NO, it is not movable, they are stuck together (like in the example above).
+
+After discovering that the box we just pushed is not movable, we need to look at *all the boxes* that are marked, because they participate in the deadlock.
+Check each marked box and if any of them is not on a goal position, then this is a deadlock.
+
+#### Backward case - pull deadlock
+
+This is very similar to the push deadlock, but the is-pullable condition is not symmetric for opposite directions. For a direction there needs to be two empty
+cells next to it. Pull deadlocks are less frequent, and can be unintuitively strange configurations, but they occur.
+
+Example: the box can be pulled up and then right, but after it gets into the middle cell, it is a pull deadlock (actually a dead cell).
+
+```
+..#..      ..#..
+.....      .....
+#...#  =>  #.$.#
+.$...      .....
+..#..      ..#..
+```
+
+### A* search
+
+I decided to try the [A* search algorithm](https://en.wikipedia.org/wiki/A*_search_algorithm) instead of 
+[the BFS](https://en.wikipedia.org/wiki/Breadth-first_search) that we used this far.
+The `statesToProcess` queue is responsible for the order we processed (expanded) each board state, and 
+it made sure we process the states in their discovery order, which is basically a BFS. This finds the 
+shortest path (push optimal solution) to an end state, but it needs to process a lot of states.
+
+A* on the other hand tries to process the states first that are more promising to lead to a solution sooner.
+However, it relies on a heuristic function that estimates the remaining distance from a state to the end state.
+"Distance" here means the number of steps or box pushes.
+
+How do we calculate the number of pushes required to "finish" the game from the current state?
+A number of ways [are described here](http://sokobano.de/wiki/index.php?title=Solver#Pushes_Lowerbound_Calculation).
+
+We start by calculating the absolute minimum pushes needed to move every box to one of the goal 
+positions. We treat each box as if there were no other boxes on the board. We can pre-calculate the minimum 
+push distance from every cell to every goal position and use a lookup table when doing the heuristic calculation.
+We also need to match every box to one of the goal positions, and *exactly* one box for each goal.
+
+The optimal minimum cost perfect matching can be calculated, but it's a very expensive algorithm, so instead I just
+use a greedy approach: choose the box-goal pair that has the lowest cost (shortest push distance) and continue with 
+the next lowest that includes a box and a goal that has not been selected yet. This is not optimal, but it is fast
+enough that we can perform this for every state. (Needs sorting all possible k^2 pairs by distance)
+
+This could still be improved in different ways:
+* Incrementally update the matching since only one box is pushed at every step
+* Handle [linear conflicts](http://sokobano.de/wiki/index.php?title=Solver#Linear_Conflicts)
+* Handle [frozen boxes](http://sokobano.de/wiki/index.php?title=Solver#Frozen_Boxes)
+
+Now we have a heuristic distance, we can calulate the `f(n) = g(n) + h(n)` value for the current state and use it as
+the priority in a *priority queue*. This means we add the pushes required to reach the current state and the heuristic
+distance, which gives us an estimated total push count. This resulted in finding the solution quicker in most cases.
+
+I had an idea: why do we use the total distance, why not just the remaining (heuristic) distance `h(n)`? 
+Picking the state with a lower remaining distance should take us closer to the end state, right? Indeed, it seems to 
+find the solution even faster if I use just the heuristic distance instead of the total distance.
+I am not entirely sure why it gives better results, but I have some ideas. Probably the fact that every "edge" in our 
+graph has a cost of 1 push makes it a special case compared to a graph with arbitrary costs. Another fact is that
+the number of states (graph nodes) is so big and there is a high chance that a solution exists going through
+any specific state. This finds a less optimal solution, but does it quicker.
+
 
