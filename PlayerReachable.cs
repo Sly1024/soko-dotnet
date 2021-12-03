@@ -87,13 +87,23 @@ namespace soko
             valid = false;
         }
 
-        public void ApplyPullMove(int boxPos, int newBoxPos, int offset) {
+        public (int, int, bool) ApplyPullMove(int boxPos, int newBoxPos, int offset) {
+            var oldReachable = table[newBoxPos];
             table[newBoxPos] = BOX;
             table[boxPos] = 0;  // TODO: reachable?? Doesn't matter, we set reachableValid = false
+            var oldPlayerPos = playerPosition;
             playerPosition = newBoxPos - offset;
+            var oldValid = valid;
             valid = false;
+            return (oldReachable, oldPlayerPos, oldValid);
         }
 
+        public void UnApplyPullMove(int boxPos, int newBoxPos, (int reachable, int playerPos, bool valid) restoreValues) {
+            table[boxPos] = BOX;
+            table[newBoxPos] = restoreValues.reachable;
+            playerPosition = restoreValues.playerPos;
+            valid = restoreValues.valid;
+        }
 
         // for debugging
         internal void PrintTable()
@@ -213,6 +223,10 @@ namespace soko
             }
 
             return false;
+        }
+
+        public void StoreDeadlock(DeadlockPatterns deadlocks) {
+            deadlocks.AddPattern(markedPositions.list, markedPositions.count);
         }
     }
 }

@@ -60,6 +60,8 @@ namespace soko
         DynamicList<HashState> sourceAncestors2;
         DynamicList<HashState> targetAncestors2;
 
+        DeadlockPatterns deadlocks;
+
         public Solver(Level level)
         {
             this.level = level;
@@ -79,8 +81,10 @@ namespace soko
             statesToProcess = new StatesToProcess();
             statesToProcessBck = new StatesToProcessBck();
 
+            deadlocks = new DeadlockPatterns(level);
+
             // prepare fwd states
-            var state = new State(level, level.boxPositions, level.playerPosition);
+            var state = new State(level, level.boxPositions, level.playerPosition, deadlocks);
             
             startStateZ = state.GetZHash();
             forwardVisitedStates.TryAdd(startStateZ, new HashState());
@@ -105,7 +109,7 @@ namespace soko
             var endPlayerPositions = GenerateEndPlayerPositions();
             foreach (var endPlayerPos in endPlayerPositions)
             {
-                var endState = new State(level, level.goalPositions, endPlayerPos);
+                var endState = new State(level, level.goalPositions, endPlayerPos, deadlocks);
                 var endStateZ = endState.GetZHash();
                 backwardVisitedStates.TryAdd(endStateZ, new HashState());
                 int pullDistance = endState.GetHeuristicPullDistance();
@@ -273,8 +277,8 @@ namespace soko
                 do
                 {
                     move = movesBck.items[mIdx++];
-                    bckState.ApplyPullMove(move);
-                    if (!bckState.reachable.isBoxPullDeadLocked(move.BoxPos)) {
+                    
+                    if (bckState.ApplyPullMoveAndCheckDeadlock(move)) {
                         var newZHash = bckState.GetZHash();
 
                         if (backwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
@@ -293,9 +297,9 @@ namespace soko
                                 }
                             }
                         }
+                        bckState.ApplyPushMove(move);
                     }
-
-                    bckState.ApplyPushMove(move);
+                    
                 } while (!move.IsLast);
                 movesBck.RemoveRange(toProcess.moveIdx, mIdx);
             }

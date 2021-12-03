@@ -7,13 +7,15 @@ namespace soko
     {
         Level level;
         BoxPositions boxPositions;
+        DeadlockPatterns deadlocks;
         ulong boxZhash;
 
         public PlayerReachable reachable, prevReachable;
 
-        public State(Level level, int[] initialBoxPositions, int initialPlayerPosition)
+        public State(Level level, int[] initialBoxPositions, int initialPlayerPosition, DeadlockPatterns deadlocks)
         {
             this.level = level;
+            this.deadlocks = deadlocks;
             boxPositions = new BoxPositions(level.table.Length, initialBoxPositions);
 
             boxZhash = level.GetZHashForBoxes(initialBoxPositions);
@@ -114,13 +116,46 @@ namespace soko
             var newBoxPos = move.BoxPos;
             var boxPos = newBoxPos + offset;
 
+            reachable.ApplyPullMove(boxPos, newBoxPos, offset);
+
+            // update boxPositions
+            boxPositions.Move(boxPos, newBoxPos);
+
+            // update boxZhash
+            boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
+        }
+
+        public bool ApplyPullMoveAndCheckDeadlock(Move move)
+        {
+            var offset = Level.DirOffset[move.Direction];
+            var newBoxPos = move.BoxPos;
+            var boxPos = newBoxPos + offset;
+
+            var restoreValues = reachable.ApplyPullMove(boxPos, newBoxPos, offset);
+
+            var isDeadlock = deadlocks.UpdateRemaining(newBoxPos, -1);
+            // update/check for deadlock
+            if (!isDeadlock && reachable.isBoxPullDeadLocked(newBoxPos)) {
+                reachable.StoreDeadlock(deadlocks);
+                isDeadlock = true;
+            }
+
+            if (isDeadlock) {
+                // found a deadlock pattern, we undo all operations we did this far
+                deadlocks.UpdateRemaining(newBoxPos, 1);
+                reachable.UnApplyPullMove(boxPos, newBoxPos, restoreValues);
+                return false;
+            }
+
+            deadlocks.UpdateRemaining(boxPos, 1);
+
             // update boxPositions
             boxPositions.Move(boxPos, newBoxPos);
 
             // update boxZhash
             boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
 
-            reachable.ApplyPullMove(boxPos, newBoxPos, offset);
+            return true;
         }
 
         public void ApplyMove(Move move, bool pull)
