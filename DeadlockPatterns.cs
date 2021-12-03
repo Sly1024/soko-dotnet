@@ -7,6 +7,8 @@ namespace soko
         List<int> boxRemaining = new List<int>();
         List<int>[] patternsForBoxPos;
 
+        public int Count => boxRemaining.Count;
+
         public DeadlockPatterns(Level level)
         {
             patternsForBoxPos = new List<int>[level.table.Length];

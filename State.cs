@@ -108,6 +108,10 @@ namespace soko
             boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
 
             reachable.ApplyPushMove(boxPos, newBoxPos);
+
+            // update deadlocks
+            deadlocks.UpdateRemaining(newBoxPos, -1);
+            deadlocks.UpdateRemaining(boxPos, 1);
         }
         
         public void ApplyPullMove(Move move)
@@ -123,6 +127,10 @@ namespace soko
 
             // update boxZhash
             boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
+
+            // update deadlocks
+            deadlocks.UpdateRemaining(newBoxPos, -1);
+            deadlocks.UpdateRemaining(boxPos, 1);
         }
 
         public bool ApplyPullMoveAndCheckDeadlock(Move move)
@@ -174,6 +182,10 @@ namespace soko
 
             if (pull) reachable.ApplyPullMove(boxPos, newBoxPos, offset); 
             else reachable.ApplyPushMove(boxPos, newBoxPos);
+
+            // update deadlocks
+            deadlocks.UpdateRemaining(newBoxPos, -1);
+            deadlocks.UpdateRemaining(boxPos, 1);
         }
 
         public ulong GetZHash()

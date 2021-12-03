@@ -359,7 +359,7 @@ namespace soko
 
             // Console.WriteLine(solution);
             int pushCount = forwardSteps.Count + backwardSteps.Count;
-            Console.WriteLine($"{pushCount} ({forwardSteps.Count}/{backwardSteps.Count}) pushes, {solution.Length - pushCount} moves");
+            Console.WriteLine($"{pushCount} ({forwardSteps.Count}/{backwardSteps.Count}) pushes, {solution.Length - pushCount} moves, {deadlocks.Count} deadlocks");
         }
 
         private int WriteSolutionMoves(StringBuilder sb, List<HashState> steps) 
