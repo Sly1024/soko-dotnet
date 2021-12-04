@@ -87,11 +87,56 @@ namespace soko
             valid = false;
         }
 
+        public bool ApplyPushMoveAndCheckDeadlock(int boxPos, int newBoxPos) {
+            var oldReachable = table[newBoxPos];
+
+            table[newBoxPos] = BOX;
+            table[boxPos] = currentReachable;
+
+            _pullmoveCnt++;
+
+            if (isBoxPushDeadLocked(newBoxPos)) {
+                _pulldeadlockCnt++;
+                table[newBoxPos] = oldReachable;
+                table[boxPos] = BOX;
+                return true;
+            }
+
+            playerPosition = boxPos;
+            valid = false;
+
+            return false;
+        }
+
         public void ApplyPullMove(int boxPos, int newBoxPos, int offset) {
             table[newBoxPos] = BOX;
             table[boxPos] = 0;  // TODO: reachable?? Doesn't matter, we set reachableValid = false
             playerPosition = newBoxPos - offset;
             valid = false;
+        }
+
+        public int _pullmoveCnt = 0;
+        public int _pulldeadlockCnt = 0;
+
+        public bool ApplyPullMoveAndCheckDeadlock(int boxPos, int newBoxPos, int offset) {
+            var oldReachable = table[newBoxPos];
+
+            table[newBoxPos] = BOX;
+            table[boxPos] = 0;  // TODO: reachable?? Doesn't matter, we set reachableValid = false
+            
+            _pullmoveCnt++;
+
+            if (isBoxPullDeadLocked(newBoxPos)) {
+                _pulldeadlockCnt++;
+                table[newBoxPos] = oldReachable;
+                table[boxPos] = BOX;
+                return true;
+            }
+            
+            playerPosition = newBoxPos - offset;
+            valid = false;
+
+            return false;
         }
 
 

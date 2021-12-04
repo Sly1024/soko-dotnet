@@ -6,7 +6,7 @@
 [✓] Don't keep the "table" in state - there's only one State object now, other "states" are stored as a ulong zHash
 [✓] More efficient GeneratePlayerReachable (flood-fill) - tried a scanline method, the simple 4-way with a Stack is still fast enough
 [✓] Deadlock detection
-[?] Choosing next state based on Heuristic distance (A*)
+[✓] Choosing next state based on Heuristic distance (A*)
 [ ] Maintain PossibleMoves, insted of generating it
 [ ] Maintain PlayerReachable table if possible
 [ ] Tunnel detection

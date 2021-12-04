@@ -164,9 +164,8 @@ namespace soko
                 do
                 {
                     move = movesFwd.items[mIdx++];
-                    fwdState.ApplyPushMove(move);
 
-                    if (!fwdState.reachable.isBoxPushDeadLocked(move.NewBoxPos)) {
+                    if (fwdState.ApplyPushMove(move)) {
                         var newZHash = fwdState.GetZHash();
 
                         if (forwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
@@ -185,9 +184,9 @@ namespace soko
                                 }
                             }
                         }
+                        fwdState.ApplyPullMove(move);
                     }
-
-                    fwdState.ApplyPullMove(move);
+                    
                 } while (!move.IsLast);
                 movesFwd.RemoveRange(toProcess.moveIdx, mIdx);
             }
@@ -273,8 +272,7 @@ namespace soko
                 do
                 {
                     move = movesBck.items[mIdx++];
-                    bckState.ApplyPullMove(move);
-                    if (!bckState.reachable.isBoxPullDeadLocked(move.BoxPos)) {
+                    if (bckState.ApplyPullMove(move)) {
                         var newZHash = bckState.GetZHash();
 
                         if (backwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
@@ -293,9 +291,9 @@ namespace soko
                                 }
                             }
                         }
+                        bckState.ApplyPushMove(move);
                     }
-
-                    bckState.ApplyPushMove(move);
+                    
                 } while (!move.IsLast);
                 movesBck.RemoveRange(toProcess.moveIdx, mIdx);
             }
@@ -355,7 +353,10 @@ namespace soko
 
             // Console.WriteLine(solution);
             int pushCount = forwardSteps.Count + backwardSteps.Count;
-            Console.WriteLine($"{pushCount} ({forwardSteps.Count}/{backwardSteps.Count}) pushes, {solution.Length - pushCount} moves");
+            Console.WriteLine($"{pushCount} ({forwardSteps.Count}/{backwardSteps.Count}) pushes, {solution.Length - pushCount} moves, " +
+                $"deadlockrate: {fwdState.reachable._pulldeadlockCnt}/{fwdState.reachable._pullmoveCnt}" +
+                $":{bckState.reachable._pulldeadlockCnt}/{bckState.reachable._pullmoveCnt}"
+                );
         }
 
         private int WriteSolutionMoves(StringBuilder sb, List<HashState> steps) 

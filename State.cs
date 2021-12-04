@@ -94,33 +94,42 @@ namespace soko
             return moves.FinishAddRange();
         }
 
-        public void ApplyPushMove(Move move)
+        public bool ApplyPushMove(Move move)
         {
             var boxPos = move.BoxPos;
             var newBoxPos = move.NewBoxPos;
 
+            if (reachable.ApplyPushMoveAndCheckDeadlock(boxPos, newBoxPos)) {
+                return false;
+            }
+            
             // update boxPositions
             boxPositions.Move(boxPos, newBoxPos);
 
             // update boxZhash
             boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
 
-            reachable.ApplyPushMove(boxPos, newBoxPos);
+            return true;
         }
         
-        public void ApplyPullMove(Move move)
+        public bool ApplyPullMove(Move move)
         {
             var offset = Level.DirOffset[move.Direction];
             var newBoxPos = move.BoxPos;
             var boxPos = newBoxPos + offset;
 
+            // reachable.ApplyPullMove(boxPos, newBoxPos, offset);
+            if (reachable.ApplyPullMoveAndCheckDeadlock(boxPos, newBoxPos, offset)) {
+                return false;
+            }
+
             // update boxPositions
             boxPositions.Move(boxPos, newBoxPos);
 
             // update boxZhash
             boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
 
-            reachable.ApplyPullMove(boxPos, newBoxPos, offset);
+            return true;
         }
 
         public void ApplyMove(Move move, bool pull)
