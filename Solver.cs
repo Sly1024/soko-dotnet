@@ -140,8 +140,8 @@ namespace soko
 
             return Task.WhenAny(new [] {
                 // !!! HeuristicDistance re-uses private BitArrays, won't work with 2 threads!!!
-                // Task.Run(() => { while (commonState == 0) SolveForwardOneStep(); }),
-                Task.Run(() => { while (commonState == 0) SolveReverseOneStep(); }),
+                Task.Run(() => { while (commonState == 0) SolveForwardOneStep(); }),
+                // Task.Run(() => { while (commonState == 0) SolveReverseOneStep(); }),
             });
         }
 
@@ -184,7 +184,7 @@ namespace soko
                                 }
                             }
                         }
-                        fwdState.ApplyPullMove(move);
+                        fwdState.ApplyMove(move, pull: true);
                     }
                     
                 } while (!move.IsLast);
@@ -291,7 +291,7 @@ namespace soko
                                 }
                             }
                         }
-                        bckState.ApplyPushMove(move);
+                        bckState.ApplyMove(move, pull: false);
                     }
                     
                 } while (!move.IsLast);

@@ -80,11 +80,22 @@ namespace soko
 
         public void Invalidate() => valid = false;
 
-        public void ApplyPushMove(int boxPos, int newBoxPos) {
+        public void ApplyPushMove(int boxPos, int newBoxPos, int offset) {
+            var ortho = (level.width+1) - Math.Abs(offset);
+            if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED || table[newBoxPos] != currentReachable) &&
+                (table[boxPos + ortho] >= currentReachable && table[boxPos - ortho] >= currentReachable))
+            {
+                if (boxPos < playerPosition) playerPosition = boxPos; else
+                if (playerPosition == newBoxPos) {
+                    while (table[++playerPosition] != currentReachable) ;
+                }
+            } else {
+                valid = false;
+                playerPosition = boxPos;
+            }
             table[newBoxPos] = BOX;
             table[boxPos] = currentReachable;
-            playerPosition = boxPos;
-            valid = false;
+            // playerPosition = boxPos;
         }
 
         public bool ApplyPushMoveAndCheckDeadlock(int boxPos, int newBoxPos) {
@@ -102,17 +113,52 @@ namespace soko
                 return true;
             }
 
-            playerPosition = boxPos;
-            valid = false;
+            var ortho = (level.width+1) - Math.Abs(newBoxPos - boxPos);
+            if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED || oldReachable != currentReachable) &&
+                (table[boxPos + ortho] >= currentReachable && table[boxPos - ortho] >= currentReachable))
+            {
+                if (boxPos < playerPosition) playerPosition = boxPos; else
+                if (playerPosition == newBoxPos) {
+                    while (table[++playerPosition] != currentReachable) ;
+                }
+            } else {
+                valid = false;
+                playerPosition = boxPos;
+            }
+            // playerPosition = boxPos;
+            // valid = false;
 
             return false;
         }
 
         public void ApplyPullMove(int boxPos, int newBoxPos, int offset) {
+            var ortho = (level.width+1) - Math.Abs(offset);
+
+            var boxPosReachable = (table[boxPos+offset] == currentReachable || table[boxPos+ortho] == currentReachable || table[boxPos-ortho] == currentReachable) ? currentReachable : 0;
+
+            if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED) &&
+                ((boxPosReachable != currentReachable) || (
+                    table[boxPos + ortho] >= currentReachable &&
+                    table[boxPos - ortho] >= currentReachable &&
+                    table[boxPos + offset] >= currentReachable
+                ))
+                )
+            {
+                if (newBoxPos - offset < playerPosition) playerPosition = newBoxPos - offset; else 
+                if (boxPosReachable == currentReachable && boxPos < playerPosition) playerPosition = boxPos; else 
+                if (playerPosition == newBoxPos) {
+                    while (table[++playerPosition] != currentReachable) ;
+                }
+            } else {
+                valid = false;
+                playerPosition = newBoxPos - offset;
+            }
+
             table[newBoxPos] = BOX;
-            table[boxPos] = 0;  // TODO: reachable?? Doesn't matter, we set reachableValid = false
-            playerPosition = newBoxPos - offset;
-            valid = false;
+            table[boxPos] = boxPosReachable;
+
+            // playerPosition = newBoxPos - offset;
+            // valid = false;
         }
 
         public int _pullmoveCnt = 0;
@@ -120,9 +166,11 @@ namespace soko
 
         public bool ApplyPullMoveAndCheckDeadlock(int boxPos, int newBoxPos, int offset) {
             var oldReachable = table[newBoxPos];
+            var ortho = (level.width+1) - Math.Abs(offset);
 
+            var boxPosReachable = (table[boxPos+offset] == currentReachable || table[boxPos+ortho] == currentReachable || table[boxPos-ortho] == currentReachable) ? currentReachable : 0;
             table[newBoxPos] = BOX;
-            table[boxPos] = 0;  // TODO: reachable?? Doesn't matter, we set reachableValid = false
+            table[boxPos] = boxPosReachable;
             
             _pullmoveCnt++;
 
@@ -133,8 +181,26 @@ namespace soko
                 return true;
             }
             
-            playerPosition = newBoxPos - offset;
-            valid = false;
+            if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED) &&
+                ((boxPosReachable != currentReachable) || (
+                    table[boxPos + ortho] >= currentReachable &&
+                    table[boxPos - ortho] >= currentReachable &&
+                    table[boxPos + offset] >= currentReachable
+                ))
+                )
+            {
+                if (newBoxPos - offset < playerPosition) playerPosition = newBoxPos - offset; else 
+                if (boxPosReachable == currentReachable && boxPos < playerPosition) playerPosition = boxPos; else 
+                if (playerPosition == newBoxPos) {
+                    while (table[++playerPosition] != currentReachable) ;
+                }
+            } else {
+                valid = false;
+                playerPosition = newBoxPos - offset;
+            }
+            
+            // playerPosition = newBoxPos - offset;
+            // valid = false;
 
             return false;
         }
@@ -145,7 +211,7 @@ namespace soko
         {
             var sb = new StringBuilder("\n");
             for (var i = 0; i < table.Length; i++) {
-                sb.Append(table[i] switch {
+                sb.Append(i == playerPosition ? '@' : table[i] switch {
                     WALL => "#",
                     BOX => "$",
                     _ => this[i] ? "." : " "

@@ -147,7 +147,7 @@ namespace soko
             boxZhash ^= level.boxZbits[boxPos] ^ level.boxZbits[newBoxPos];
 
             if (pull) reachable.ApplyPullMove(boxPos, newBoxPos, offset); 
-            else reachable.ApplyPushMove(boxPos, newBoxPos);
+            else reachable.ApplyPushMove(boxPos, newBoxPos, offset);
         }
 
         public ulong GetZHash()
