@@ -355,7 +355,8 @@ namespace soko
             int pushCount = forwardSteps.Count + backwardSteps.Count;
             Console.WriteLine($"{pushCount} ({forwardSteps.Count}/{backwardSteps.Count}) pushes, {solution.Length - pushCount} moves, " +
                 $"deadlockrate: {fwdState.reachable._pulldeadlockCnt}/{fwdState.reachable._pullmoveCnt}" +
-                $":{bckState.reachable._pulldeadlockCnt}/{bckState.reachable._pullmoveCnt}"
+                $":{bckState.reachable._pulldeadlockCnt}/{bckState.reachable._pullmoveCnt}, " +
+                $" ReachableCalls: {fwdState.reachable._calcMapFills} / {fwdState.reachable._caclMapCalls}"
                 );
         }
 

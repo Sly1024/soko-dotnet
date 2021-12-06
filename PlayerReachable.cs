@@ -60,8 +60,13 @@ namespace soko
             }
         }
 
+        public int _caclMapCalls = 0;
+        public int _calcMapFills = 0;
+
         public void CalculateMap() {
+            _caclMapCalls++;
             if (valid) return;
+            _calcMapFills++;
 
             // if currentReachable overflows
             if (++currentReachable >= MAX_REACHABLE) {
@@ -81,21 +86,20 @@ namespace soko
         public void Invalidate() => valid = false;
 
         public void ApplyPushMove(int boxPos, int newBoxPos, int offset) {
-            var ortho = (level.width+1) - Math.Abs(offset);
-            if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED || table[newBoxPos] != currentReachable) &&
-                (table[boxPos + ortho] >= currentReachable && table[boxPos - ortho] >= currentReachable))
-            {
-                if (boxPos < playerPosition) playerPosition = boxPos; else
-                if (playerPosition == newBoxPos) {
-                    while (table[++playerPosition] != currentReachable) ;
-                }
-            } else {
+            // var ortho = (level.width+1) - Math.Abs(offset);
+            // if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED || table[newBoxPos] != currentReachable) &&
+            //     (table[boxPos + ortho] >= currentReachable && table[boxPos - ortho] >= currentReachable))
+            // {
+            //     if (boxPos < playerPosition) playerPosition = boxPos; else
+            //     if (playerPosition == newBoxPos) {
+            //         while (table[++playerPosition] != currentReachable) ;
+            //     }
+            // } else {
                 valid = false;
                 playerPosition = boxPos;
-            }
+            // }
             table[newBoxPos] = BOX;
             table[boxPos] = currentReachable;
-            // playerPosition = boxPos;
         }
 
         public bool ApplyPushMoveAndCheckDeadlock(int boxPos, int newBoxPos) {
@@ -113,20 +117,20 @@ namespace soko
                 return true;
             }
 
-            var ortho = (level.width+1) - Math.Abs(newBoxPos - boxPos);
-            if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED || oldReachable != currentReachable) &&
-                (table[boxPos + ortho] >= currentReachable && table[boxPos - ortho] >= currentReachable))
-            {
-                if (boxPos < playerPosition) playerPosition = boxPos; else
-                if (playerPosition == newBoxPos) {
-                    while (table[++playerPosition] != currentReachable) ;
-                }
-            } else {
-                valid = false;
-                playerPosition = boxPos;
-            }
-            // playerPosition = boxPos;
-            // valid = false;
+            // var ortho = (level.width+1) - Math.Abs(newBoxPos - boxPos);
+            // if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED || oldReachable != currentReachable) &&
+            //     (table[boxPos + ortho] >= currentReachable && table[boxPos - ortho] >= currentReachable))
+            // {
+            //     if (boxPos < playerPosition) playerPosition = boxPos; else
+            //     if (playerPosition == newBoxPos) {
+            //         while (table[++playerPosition] != currentReachable) ;
+            //     }
+            // } else {
+            //     valid = false;
+            //     playerPosition = boxPos;
+            // }
+            playerPosition = boxPos;
+            valid = false;
 
             return false;
         }
@@ -136,29 +140,29 @@ namespace soko
 
             var boxPosReachable = (table[boxPos+offset] == currentReachable || table[boxPos+ortho] == currentReachable || table[boxPos-ortho] == currentReachable) ? currentReachable : 0;
 
-            if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED) &&
-                ((boxPosReachable != currentReachable) || (
-                    table[boxPos + ortho] >= currentReachable &&
-                    table[boxPos - ortho] >= currentReachable &&
-                    table[boxPos + offset] >= currentReachable
-                ))
-                )
-            {
-                if (newBoxPos - offset < playerPosition) playerPosition = newBoxPos - offset; else 
-                if (boxPosReachable == currentReachable && boxPos < playerPosition) playerPosition = boxPos; else 
-                if (playerPosition == newBoxPos) {
-                    while (table[++playerPosition] != currentReachable) ;
-                }
-            } else {
-                valid = false;
-                playerPosition = newBoxPos - offset;
-            }
+            // if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED) &&
+            //     ((boxPosReachable != currentReachable) || (
+            //         table[boxPos + ortho] >= currentReachable &&
+            //         table[boxPos - ortho] >= currentReachable &&
+            //         table[boxPos + offset] >= currentReachable
+            //     ))
+            //     )
+            // {
+            //     if (newBoxPos - offset < playerPosition) playerPosition = newBoxPos - offset; else 
+            //     if (boxPosReachable == currentReachable && boxPos < playerPosition) playerPosition = boxPos; else 
+            //     if (playerPosition == newBoxPos) {
+            //         while (table[++playerPosition] != currentReachable) ;
+            //     }
+            // } else {
+            //     valid = false;
+            //     playerPosition = newBoxPos - offset;
+            // }
 
             table[newBoxPos] = BOX;
             table[boxPos] = boxPosReachable;
 
-            // playerPosition = newBoxPos - offset;
-            // valid = false;
+            playerPosition = newBoxPos - offset;
+            valid = false;
         }
 
         public int _pullmoveCnt = 0;
@@ -181,26 +185,26 @@ namespace soko
                 return true;
             }
             
-            if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED) &&
-                ((boxPosReachable != currentReachable) || (
-                    table[boxPos + ortho] >= currentReachable &&
-                    table[boxPos - ortho] >= currentReachable &&
-                    table[boxPos + offset] >= currentReachable
-                ))
-                )
-            {
-                if (newBoxPos - offset < playerPosition) playerPosition = newBoxPos - offset; else 
-                if (boxPosReachable == currentReachable && boxPos < playerPosition) playerPosition = boxPos; else 
-                if (playerPosition == newBoxPos) {
-                    while (table[++playerPosition] != currentReachable) ;
-                }
-            } else {
-                valid = false;
-                playerPosition = newBoxPos - offset;
-            }
+            // if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED) &&
+            //     ((boxPosReachable != currentReachable) || (
+            //         table[boxPos + ortho] >= currentReachable &&
+            //         table[boxPos - ortho] >= currentReachable &&
+            //         table[boxPos + offset] >= currentReachable
+            //     ))
+            //     )
+            // {
+            //     if (newBoxPos - offset < playerPosition) playerPosition = newBoxPos - offset; else 
+            //     if (boxPosReachable == currentReachable && boxPos < playerPosition) playerPosition = boxPos; else 
+            //     if (playerPosition == newBoxPos) {
+            //         while (table[++playerPosition] != currentReachable) ;
+            //     }
+            // } else {
+            //     valid = false;
+            //     playerPosition = newBoxPos - offset;
+            // }
             
-            // playerPosition = newBoxPos - offset;
-            // valid = false;
+            playerPosition = newBoxPos - offset;
+            valid = false;
 
             return false;
         }
