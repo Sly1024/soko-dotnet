@@ -43,7 +43,7 @@ namespace soko
             this.width = width;
 
             // L, R, U, D
-            DirOffset = new [] { -1, 1, -width, width };
+            DirOffset = [-1, 1, -width, width];
 
             PreProcessTable();
             Filler.FillPerimeter(table, width, Cell.Wall);
@@ -145,9 +145,20 @@ namespace soko
             return hash;
         }
 
-        public static Level Parse(string text) 
+        static readonly Dictionary<char, int> cell_map = new()
         {
-            var lines = text.Split(new []{ "\r", "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+            { ' ', Cell.Empty },
+            { '#', Cell.Wall },
+            { '@', Cell.Player },
+            { '+', Cell.Player | Cell.Goal },
+            { '$', Cell.Box },
+            { '*', Cell.Box | Cell.Goal },
+            { '.', Cell.Goal },
+        };
+
+        public static Level Parse(string text)
+        {
+            var lines = text.Split(["\r", "\n", "\r\n"], StringSplitOptions.RemoveEmptyEntries);
             var width = lines.Max(line => line.Length);
             var cells = new List<int>();
 
@@ -156,29 +167,16 @@ namespace soko
                 var column = 0;
                 foreach (var ch in line)
                 {
-                    switch (ch)
-                    {   
-                        case ' ': cells.Add(Cell.Empty);
-                            break;
-                        case '#': cells.Add(Cell.Wall);
-                            break;
-                        case '@': cells.Add(Cell.Player);
-                            break;
-                        case '+': cells.Add(Cell.Player | Cell.Goal);
-                            break;
-                        case '$': cells.Add(Cell.Box);
-                            break;
-                        case '*': cells.Add(Cell.Box | Cell.Goal);
-                            break;
-                        case '.': cells.Add(Cell.Goal);
-                            break;
-                        default: throw new ArgumentException($"Invalid character {ch}.");
+                    if (cell_map.TryGetValue(ch, out int cell)) {
+                        cells.Add(cell);
+                    } else {
+                        throw new ArgumentException($"Invalid character {ch}.");
                     }
                     column++;
                 }
                 while (column++ < width) cells.Add(Cell.Empty);
             }
-            return new Level(cells.ToArray(), width);
+            return new Level([.. cells], width);
         }
     }
 }

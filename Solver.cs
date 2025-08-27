@@ -48,8 +48,8 @@ namespace soko
         public StateTable forwardVisitedStates;
         public StateTableBack backwardVisitedStates;
 
-        public MoveRanges movesFwd = new MoveRanges(1000);
-        public MoveRanges movesBck = new MoveRanges(1000);
+        public MoveRanges movesFwd = new(1000);
+        public MoveRanges movesBck = new(1000);
 
         public StatesToProcess statesToProcess;
         public StatesToProcessBck statesToProcessBck;
@@ -83,7 +83,7 @@ namespace soko
             var state = new State(level, level.boxPositions, level.playerPosition);
             
             startStateZ = state.GetZHash();
-            forwardVisitedStates.TryAdd(startStateZ, new HashState());
+            forwardVisitedStates.TryAdd(startStateZ, new HashState());  // parent of the root is "null" (zeros)
 
             fwdState = state;
             int pushDistance = fwdState.GetHeuristicPushDistance();
@@ -99,8 +99,8 @@ namespace soko
             }, pushDistance);
 
             // prepare bck states
-            endStateZs = new List<ulong>();
-            bckStates = new List<State>();
+            endStateZs = [];
+            bckStates = [];
             
             var endPlayerPositions = GenerateEndPlayerPositions();
             foreach (var endPlayerPos in endPlayerPositions)
@@ -138,11 +138,11 @@ namespace soko
                 
             // });
 
-            return Task.WhenAny(new [] {
+            return Task.WhenAny([
                 // !!! HeuristicDistance re-uses private BitArrays, won't work with 2 threads!!!
                 Task.Run(() => { while (commonState == 0) SolveForwardOneStep(); }),
-                // Task.Run(() => { while (commonState == 0) SolveReverseOneStep(); }),
-            });
+                Task.Run(() => { while (commonState == 0) SolveReverseOneStep(); }),
+            ]);
         }
 
 
@@ -305,7 +305,8 @@ namespace soko
             var table = new int[level.table.Length];
             for (var i = 0; i < table.Length; i++)
             {
-                table[i] = (level.table[i].has(Cell.Wall | Cell.Goal)) ? 1 : 0;
+                // at the end state, all boxes are on goal positions
+                table[i] = level.table[i].has(Cell.Wall | Cell.Goal) ? 1 : 0;
             }
             
             var playerPositions = new List<int>();
@@ -318,7 +319,7 @@ namespace soko
                 }
             }
 
-            return playerPositions.ToArray();
+            return [.. playerPositions];
         }
 
         public void PrintSolution()
@@ -328,7 +329,8 @@ namespace soko
             var forwardSteps = new List<HashState>();
             var state = commonState;
 
-            while (state != startStateZ) {
+            while (state != startStateZ)
+            {
                 var fromState = forwardVisitedStates[state];
                 forwardSteps.Add(fromState);
                 state = fromState.zHash;
@@ -337,7 +339,8 @@ namespace soko
             var backwardSteps = new List<HashState>();
             state = commonState;
 
-            while (!endStateZs.Contains(state)) {
+            while (!endStateZs.Contains(state))
+            {
                 var fromState = backwardVisitedStates[state];
                 backwardSteps.Add(fromState);
                 state = fromState.zHash;
@@ -351,12 +354,15 @@ namespace soko
             WriteReversedSolutionMoves(sb, backwardSteps, playerPos, bckState);
             string solution = sb.ToString();
 
-            // Console.WriteLine(solution);
+
             int pushCount = forwardSteps.Count + backwardSteps.Count;
             Console.WriteLine($"{pushCount} ({forwardSteps.Count}/{backwardSteps.Count}) pushes, {solution.Length - pushCount} moves, " +
                 $"deadlockrate: {fwdState.reachable._pulldeadlockCnt}/{fwdState.reachable._pullmoveCnt}" +
                 $":{bckState.reachable._pulldeadlockCnt}/{bckState.reachable._pullmoveCnt}"
                 );
+
+            Console.WriteLine(solution);
+
         }
 
         private int WriteSolutionMoves(StringBuilder sb, List<HashState> steps) 

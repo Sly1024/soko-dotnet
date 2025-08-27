@@ -15,7 +15,7 @@ namespace soko
         // - and (value - currentMarkedMin) gives the index of the boxPosition in markedList
         //   so that list[index[boxPos] - currentMarkedMin] == boxPos
         int[] index;
-        int currentMarkedMin = 0;
+        int currentMarkedMin = 1;
 
         public MarkedList(int tableSize, int maxItemCount)
         {

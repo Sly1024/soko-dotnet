@@ -87,6 +87,7 @@ namespace soko
                 if (pos - width >= 0) checkPosition(pos - width);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             void checkPosition(int pos)
             {
                 if (isEmpty(table[pos])) { table[pos] = fillWith; queue.Enqueue(pos); }

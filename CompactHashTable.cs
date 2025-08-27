@@ -16,7 +16,7 @@ namespace soko
         private float loadFactor;
         private int sizeTimesLoadFactor;
 
-        private readonly Object sync = new Object();
+        // private readonly object sync = new();
 
         public int Count { get => count; }
 
@@ -82,7 +82,7 @@ namespace soko
                 sizeTimesLoadFactor = (int)(entries.Length * loadFactor);
 
                 foreach (var item in oldEntries) {
-                    InternalAdd(item.key, item.value);
+                    if (item.key != 0) InternalAdd(item.key, item.value);
                 }
             }
         }
@@ -90,7 +90,7 @@ namespace soko
         /** util functions - move them somewhere else? **/
 
         // https://en.wikipedia.org/wiki/Primality_test
-        bool IsPrime(int n)
+        static bool IsPrime(int n)
         {
             if (n == 2 || n == 3) return true;
 
@@ -103,7 +103,7 @@ namespace soko
             return true;
         }
 
-        int FindPrimeAbove(int n)
+        static int FindPrimeAbove(int n)
         {
             // for now, just check the odd numbers
             if ((n & 1) == 0) n++;
