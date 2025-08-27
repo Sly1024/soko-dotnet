@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using System.Linq;
 
 namespace soko
 {
@@ -26,12 +27,12 @@ namespace soko
     public struct ToProcess 
     {
         public ulong state;
-        public int moveIdx;
+        // public int moveIdx;
     }
     public struct ToProcessBck
     {
         public ulong state;
-        public int moveIdx;
+        // public int moveIdx;
         public byte bckStateIdx;
     }
 
@@ -48,8 +49,8 @@ namespace soko
         public StateTable forwardVisitedStates;
         public StateTableBack backwardVisitedStates;
 
-        public MoveRanges movesFwd = new(1000);
-        public MoveRanges movesBck = new(1000);
+        // public MoveRanges movesFwd = new(1000);
+        // public MoveRanges movesBck = new(1000);
 
         public StatesToProcess statesToProcess;
         public StatesToProcessBck statesToProcessBck;
@@ -95,7 +96,7 @@ namespace soko
             statesToProcess.Enqueue(new ToProcess
             {
                 state = startStateZ,
-                moveIdx = fwdState.GetPossiblePushMoves(movesFwd, (0, 0)), // cameFrom.IsBoxOtherSideReachable == false
+                // moveIdx = fwdState.InsertPossiblePushMovesInto(movesFwd, (0, 0)), // cameFrom.IsBoxOtherSideReachable == false
             }, pushDistance);
 
             // prepare bck states
@@ -118,7 +119,7 @@ namespace soko
                 {
                     bckStateIdx = (byte)bckStates.Count,
                     state = endStateZ,
-                    moveIdx = endState.GetPossiblePullMoves(movesBck, (0, 0)), // cameFrom.IsBoxOtherSideReachable == false
+                    // moveIdx = endState.GetPossiblePullMoves(movesBck, (0, 0)), // cameFrom.IsBoxOtherSideReachable == false
                 }, pullDistance);
                 endStateZs.Add(endStateZ);
                 bckStates.Add(endState);
@@ -150,45 +151,43 @@ namespace soko
         private void SolveForwardOneStep()
         {
             if (statesToProcess.Count > 0) {
-                var toProcess = statesToProcess.Dequeue();
                 // var pushes = toProcess.pushes + 1;
-                ulong stateZHash = toProcess.state;
+                ulong stateZHash = statesToProcess.Dequeue().state;
 
-                MoveStateInto(fwdState, stateZHash, forwardVisitedStates, false, sourceAncestors1, targetAncestors1);
+                var lastMove = MoveStateInto(fwdState, stateZHash, forwardVisitedStates, false, sourceAncestors1, targetAncestors1) ?? (0, 0);
 
                 // Console.WriteLine("Processing state...");
                 // fullState.PrintTable();
 
-                var mIdx = toProcess.moveIdx;
-                Move move;
-                do
-                {
-                    move = movesFwd.items[mIdx++];
 
-                    if (fwdState.ApplyPushMove(move)) {
+                foreach (Move move in fwdState.GetPossiblePushMoves(lastMove).ToArray())
+                {
+
+                    if (fwdState.ApplyPushMove(move))
+                    {
                         var newZHash = fwdState.GetZHash();
 
-                        if (forwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
-                            if (backwardVisitedStates.ContainsKey(newZHash)) {
+                        if (forwardVisitedStates.TryAdd(newZHash, (stateZHash, move)))
+                        {
+                            if (backwardVisitedStates.ContainsKey(newZHash))
+                            {
                                 commonState = newZHash;
                                 return;
                             }
-                            var moveIdx2 = fwdState.GetPossiblePushMoves(movesFwd, move);
-                            if (moveIdx2 >= 0) {
-                                int pushDistance = fwdState.GetHeuristicPushDistance();
-                                if (pushDistance < HeuristicDistances.Unreachable) {
-                                    statesToProcess.Enqueue(
-                                        new ToProcess { state = newZHash, moveIdx = moveIdx2 },
-                                        pushDistance
-                                    );
-                                }
+
+                            int pushDistance = fwdState.GetHeuristicPushDistance();
+                            if (pushDistance < HeuristicDistances.Unreachable)
+                            {
+                                statesToProcess.Enqueue(
+                                    new ToProcess { state = newZHash },
+                                    pushDistance
+                                );
                             }
                         }
+                        // revert the move
                         fwdState.ApplyMove(move, pull: true);
                     }
-                    
-                } while (!move.IsLast);
-                movesFwd.RemoveRange(toProcess.moveIdx, mIdx);
+                }
             }
         }
 
@@ -202,10 +201,10 @@ namespace soko
         // sourceAncestors: [6, 5], targetAncestors: [2, 3, 5]
         // we exclude the common state (5) from both
         // 
-        private void MoveStateInto(State state, ulong targetZhash, StateTable visitedStates, bool backward, DynamicList<HashState> sourceAncestors, DynamicList<HashState> targetAncestors)
+        private static Move? MoveStateInto(State state, ulong targetZhash, StateTable visitedStates, bool backward, DynamicList<HashState> sourceAncestors, DynamicList<HashState> targetAncestors)
         {
             var sourceZHash = state.GetZHash();
-            if (sourceZHash == targetZhash) return;
+            if (sourceZHash == targetZhash) return null;
 
             sourceAncestors.Clear();
             targetAncestors.Clear();
@@ -215,11 +214,14 @@ namespace soko
             var targetState = visitedStates[targetZhash];
             targetAncestors.Add((targetZhash, targetState.move));
 
-            while (true) {
-                var sourcePrevZ = sourceState.zHash; 
-                if (sourcePrevZ != 0) {
+            while (true)
+            {
+                var sourcePrevZ = sourceState.zHash;
+                if (sourcePrevZ != 0)
+                {
                     var srcInTarget = targetAncestors.FindZhash(sourcePrevZ);
-                    if (srcInTarget >= 0) {
+                    if (srcInTarget >= 0)
+                    {
                         // ignore items in targetAncestors after sourceState
                         targetAncestors.Truncate(srcInTarget);
                         break;
@@ -229,9 +231,11 @@ namespace soko
                 }
 
                 var targetPrevZ = targetState.zHash;
-                if (targetPrevZ != 0) {
+                if (targetPrevZ != 0)
+                {
                     var targetInSrc = sourceAncestors.FindZhash(targetPrevZ);
-                    if (targetInSrc >= 0) {
+                    if (targetInSrc >= 0)
+                    {
                         // ignore items in sourceAncestors after targetState
                         sourceAncestors.Truncate(targetInSrc);
                         break;
@@ -240,15 +244,20 @@ namespace soko
                     targetAncestors.Add((targetPrevZ, targetState.move));
                 }
             }
-            
+
             // walk up the tree from the source to the common ancestor node
-            for (var i = 0; i < sourceAncestors.Count; i++) {
+            for (var i = 0; i < sourceAncestors.Count; i++)
+            {
                 state.ApplyMove(sourceAncestors.items[i].move, !backward);
             }
 
-            for (var i = targetAncestors.Count - 1; i >= 0; i--) {
+            for (var i = targetAncestors.Count - 1; i >= 0; i--)
+            {
                 state.ApplyMove(targetAncestors.items[i].move, backward);
             }
+
+            // last move
+            return targetAncestors.Count > 0 ? targetAncestors.items[0].move : null;
         }
 
         private void SolveReverseOneStep()
@@ -260,42 +269,35 @@ namespace soko
 
                 var bckState = bckStates[toProcess.bckStateIdx];
 
-                MoveStateInto(bckState, stateZHash, backwardVisitedStates, true, sourceAncestors2, targetAncestors2);
+                var lastMove = MoveStateInto(bckState, stateZHash, backwardVisitedStates, true, sourceAncestors2, targetAncestors2) ?? (0, 0);
 
-                //bckState.StorePrevReachable();
-                
-                // Console.WriteLine("Processing state...");
-                // fullState.PrintTable();
-
-                var mIdx = toProcess.moveIdx;
-                Move move;
-                do
+                foreach (Move move in bckState.GetPossiblePullMoves(lastMove).ToArray())
                 {
-                    move = movesBck.items[mIdx++];
-                    if (bckState.ApplyPullMove(move)) {
+                    // move = movesBck.items[mIdx++];
+                    if (bckState.ApplyPullMove(move))
+                    {
                         var newZHash = bckState.GetZHash();
 
-                        if (backwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
-                            if (forwardVisitedStates.ContainsKey(newZHash)) {
+                        if (backwardVisitedStates.TryAdd(newZHash, (stateZHash, move)))
+                        {
+                            if (forwardVisitedStates.ContainsKey(newZHash))
+                            {
                                 commonState = newZHash;
                                 return;
                             }
-                            var moveIdx2 = bckState.GetPossiblePullMoves(movesBck, move);
-                            if (moveIdx2 >= 0) {
-                                int pullDistance = bckState.GetHeuristicPullDistance();
-                                if (pullDistance < HeuristicDistances.Unreachable) {
-                                    statesToProcessBck.Enqueue(
-                                        new ToProcessBck { state = newZHash, moveIdx = moveIdx2, bckStateIdx = toProcess.bckStateIdx },
-                                        pullDistance
-                                    );
-                                }
+
+                            int pullDistance = bckState.GetHeuristicPullDistance();
+                            if (pullDistance < HeuristicDistances.Unreachable)
+                            {
+                                statesToProcessBck.Enqueue(
+                                    new ToProcessBck { state = newZHash, bckStateIdx = toProcess.bckStateIdx },
+                                    pullDistance
+                                );
                             }
                         }
                         bckState.ApplyMove(move, pull: false);
                     }
-                    
-                } while (!move.IsLast);
-                movesBck.RemoveRange(toProcess.moveIdx, mIdx);
+                }
             }
         }
 

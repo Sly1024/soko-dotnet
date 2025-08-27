@@ -27,6 +27,7 @@ namespace soko
             sizeTimesLoadFactor = (int)(entries.Length * loadFactor);
         }
 
+        /// <returns>true if inserted, false if already present</returns>
         public bool TryAdd(ulong key, TValue value)
         {
             /* lock (sync) */ {
@@ -66,6 +67,7 @@ namespace soko
         }
 
 
+        /// <returns>true if inserted, false if already present</returns>
         private bool InternalAdd(ulong key, TValue value)
         {
             int idx = FindEntry(key);

@@ -1,0 +1,6 @@
+OLD moves_list, CompactHash(linear_probing, prime size):
+0:01:57.3 AVG Rates: 135197 / 195960; 233416 / 404499   
+
+NO moves_list:
+ 0:01:57.7 Mem/Accu: 2996 / 9957 MB, GC: 623/17/9 States: 4,857,041 / 11,117,772; 25,366,658 / 38,027,853 Rates: 72428 / 126699; 311793 / 431088                     ^C
+ 0:01:57.8 AVG Rates: 41258 / 94440; 215477 / 323028   

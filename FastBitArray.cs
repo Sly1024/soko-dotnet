@@ -1,15 +1,10 @@
 using System;
 namespace soko 
 {
-    public class FastBitArray 
+    public class FastBitArray(int length)
     {
-        int[] table;
+        readonly int[] table = new int[length];
         int currentValue = 1;
-
-        public FastBitArray(int length)
-        {
-            table = new int[length];
-        }
 
         public bool this[int idx] {
             get => table[idx] == currentValue;

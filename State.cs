@@ -1,5 +1,6 @@
 using System.Text;
 using System;
+using System.Collections.Generic;
 
 namespace soko
 {
@@ -21,7 +22,16 @@ namespace soko
             prevReachable = new PlayerReachable(level, initialBoxPositions, initialPlayerPosition);
         }
 
-        public int GetPossiblePushMoves(MoveRanges moves, Move cameFrom)
+        public int InsertPossiblePushMovesInto(MoveRanges moves, Move cameFrom)
+        {
+            moves.StartAddRange();
+
+            foreach (Move m in GetPossiblePushMoves(cameFrom)) moves.AddRangeItem(m);
+
+            return moves.FinishAddRange();
+        }
+
+        public IEnumerable<Move> GetPossiblePushMoves(Move cameFrom)
         {
             reachable.CalculateMap();
 
@@ -29,80 +39,97 @@ namespace soko
             int cameFromBoxPos = 0;
 
             // if IsBoxOtherSideReachable is false, we don't want to calculate these, just leave them as 0
-            if (cameFrom.IsBoxOtherSideReachable) {
+            if (cameFrom.IsBoxOtherSideReachable)
+            {
                 cameFromOffset = Level.DirOffset[cameFrom.Direction];
                 cameFromBoxPos = cameFrom.BoxPos + cameFromOffset;
             }
 
-            moves.StartAddRange();
-
-            foreach (var boxPos in boxPositions.list) {
-                for (var dir = 0; dir < 4; dir++) {
-                    var offset = Level.DirOffset[dir];
-                    if (reachable[boxPos - offset]) {
-                        // if IsBoxOtherSideReachable == false, cameFromBoxPos==0, so this will quickly fail
-                        if (boxPos == cameFromBoxPos && offset == -cameFromOffset) {
-                            // this is the move that basically undoes the move `cameFrom`, so we don't need to check it, the resulting state is 
-                            // from where we got to the current state
-                            continue;
-                        }
-
-                        if (!reachable.Blocked(boxPos + offset) && !level.pushDeadCells[boxPos + offset]) {
-                            moves.AddRangeItem((boxPos, dir, otherSideReachable: reachable[boxPos + offset]));
-                        }
-                    }
-                }
-            }
-
-            return moves.FinishAddRange();
-        }
-        
-        public int GetPossiblePullMoves(MoveRanges moves, Move cameFrom)
-        {
-            reachable.CalculateMap();
-
-            int cameFromOffset = 0;
-            int cameFromBoxPos = 0;
-
-            // if IsBoxOtherSideReachable is false, we don't want to calculate these, just leave them as 0
-            if (cameFrom.IsBoxOtherSideReachable) {
-                cameFromOffset = Level.DirOffset[cameFrom.Direction];
-                cameFromBoxPos = cameFrom.BoxPos;
-            }
-
-            moves.StartAddRange();
 
             foreach (var boxPos in boxPositions.list)
             {
                 for (var dir = 0; dir < 4; dir++)
                 {
                     var offset = Level.DirOffset[dir];
-                    if (reachable[boxPos - offset]) {
+                    if (reachable[boxPos - offset])
+                    {
                         // if IsBoxOtherSideReachable == false, cameFromBoxPos==0, so this will quickly fail
-                        if (boxPos == cameFromBoxPos && offset == -cameFromOffset) {
+                        if (boxPos == cameFromBoxPos && offset == -cameFromOffset)
+                        {
                             // this is the move that basically undoes the move `cameFrom`, so we don't need to check it, the resulting state is 
                             // from where we got to the current state
                             continue;
                         }
-                        if (!reachable.Blocked(boxPos - 2*offset) && !level.pullDeadCells[boxPos - offset]) {
-                            moves.AddRangeItem((boxPos - offset, dir, otherSideReachable: reachable[boxPos + offset]));
+
+                        if (!reachable.Blocked(boxPos + offset) && !level.pushDeadCells[boxPos + offset])
+                        {
+                            yield return (boxPos, dir, otherSideReachable: reachable[boxPos + offset]);
                         }
                     }
                 }
             }
 
+        }
+        
+        public int InsertPossiblePullMovesInto(MoveRanges moves, Move cameFrom)
+        {
+            moves.StartAddRange();
+
+            foreach (Move m in GetPossiblePullMoves(cameFrom)) moves.AddRangeItem(m);
+
             return moves.FinishAddRange();
         }
+        public IEnumerable<Move> GetPossiblePullMoves(Move cameFrom)
+        {
+            reachable.CalculateMap();
 
+            int cameFromOffset = 0;
+            int cameFromBoxPos = 0;
+
+            // if IsBoxOtherSideReachable is false, we don't want to calculate these, just leave them as 0
+            if (cameFrom.IsBoxOtherSideReachable)
+            {
+                cameFromOffset = Level.DirOffset[cameFrom.Direction];
+                cameFromBoxPos = cameFrom.BoxPos;
+            }
+
+            foreach (var boxPos in boxPositions.list)
+            {
+                for (var dir = 0; dir < 4; dir++)
+                {
+                    var offset = Level.DirOffset[dir];
+                    if (reachable[boxPos - offset])
+                    {
+                        // if IsBoxOtherSideReachable == false, cameFromBoxPos==0, so this will quickly fail
+                        if (boxPos == cameFromBoxPos && offset == -cameFromOffset)
+                        {
+                            // this is the move that basically undoes the move `cameFrom`, so we don't need to check it, the resulting state is 
+                            // from where we got to the current state
+                            continue;
+                        }
+                        if (!reachable.Blocked(boxPos - 2 * offset) && !level.pullDeadCells[boxPos - offset])
+                        {
+                            yield return (boxPos - offset, dir, otherSideReachable: reachable[boxPos + offset]);
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reverts the step if failed (deadlock)
+        /// </summary>
+        /// <returns>false if it's a deadlock</returns>
         public bool ApplyPushMove(Move move)
         {
             var boxPos = move.BoxPos;
             var newBoxPos = move.NewBoxPos;
 
-            if (reachable.ApplyPushMoveAndCheckDeadlock(boxPos, newBoxPos)) {
+            if (reachable.ApplyPushMoveAndCheckDeadlock(boxPos, newBoxPos))
+            {
                 return false;
             }
-            
+
             // update boxPositions
             boxPositions.Move(boxPos, newBoxPos);
 

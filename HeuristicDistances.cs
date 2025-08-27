@@ -141,11 +141,11 @@ namespace soko
 
             for (var i = 0; i < distArr.idx; i++)
             {
-                var entry = distArr.items[i];
-                if (!boxUsed[entry.box] && !goalUsed[entry.goal]) {
-                    boxUsed[entry.box] = true;
-                    goalUsed[entry.goal] = true;
-                    sumDistance += entry.dist;
+                var (box, goal, dist) = distArr.items[i];
+                if (!boxUsed[box] && !goalUsed[goal]) {
+                    boxUsed[box] = true;
+                    goalUsed[goal] = true;
+                    sumDistance += dist;
                     if (--numBoxesAdded == 0) break;
                 }
             }

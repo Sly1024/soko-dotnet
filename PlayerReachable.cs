@@ -98,7 +98,12 @@ namespace soko
             // playerPosition = boxPos;
         }
 
-        public bool ApplyPushMoveAndCheckDeadlock(int boxPos, int newBoxPos) {
+        /// <summary>
+        /// Reverts the step if failed (deadlock)
+        /// </summary>
+        /// <returns>true if deadlocked</returns>        
+        public bool ApplyPushMoveAndCheckDeadlock(int boxPos, int newBoxPos)
+        {
             var oldReachable = table[newBoxPos];
 
             table[newBoxPos] = BOX;
@@ -106,27 +111,30 @@ namespace soko
 
             _pullmoveCnt++;
 
-            if (isBoxPushDeadLocked(newBoxPos)) {
+            if (isBoxPushDeadLocked(newBoxPos))
+            {
                 _pulldeadlockCnt++;
                 table[newBoxPos] = oldReachable;
                 table[boxPos] = BOX;
                 return true;
             }
 
-            var ortho = (level.width+1) - Math.Abs(newBoxPos - boxPos);
+            var ortho = (level.width + 1) - Math.Abs(newBoxPos - boxPos);
             if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED || oldReachable != currentReachable) &&
                 (table[boxPos + ortho] >= currentReachable && table[boxPos - ortho] >= currentReachable))
             {
-                if (boxPos < playerPosition) playerPosition = boxPos; else
-                if (playerPosition == newBoxPos) {
+                if (boxPos < playerPosition) playerPosition = boxPos;
+                else
+                if (playerPosition == newBoxPos)
+                {
                     while (table[++playerPosition] != currentReachable) ;
                 }
-            } else {
+            }
+            else
+            {
                 valid = false;
                 playerPosition = boxPos;
             }
-            // playerPosition = boxPos;
-            // valid = false;
 
             return false;
         }
