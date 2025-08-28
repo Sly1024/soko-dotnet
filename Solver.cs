@@ -143,9 +143,9 @@ namespace soko
             // });
 
             return Task.WhenAny([
-                // !!! HeuristicDistance re-uses private BitArrays, won't work with 2 threads!!!
-
+                // Each thread needs its own State!
                 Task.Run(() => { while (commonState == 0) SolveForwardOneStep(); }),
+
                 Task.Run(() => { while (commonState == 0) SolveReverseOneStep(); }),
 
                 // 1 thread, both sides:

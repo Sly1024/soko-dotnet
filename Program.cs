@@ -26,12 +26,11 @@ namespace soko
             Console.CancelKeyPress += (sender, e) =>
             {
                 Console.WriteLine("");
-                Console.Write(" {0:h\\:mm\\:ss\\.f} AVG Rates: {1:0} / {2:0}; {3:0}                      ",
+                Console.Write(" {0:h\\:mm\\:ss\\.f} AVG Rates: {1:0} / {2:0}; {3:0}                     ",
                     watch.Elapsed,
                     PerformanceCounter.Counters["fwd_working_set"].Average,
                     PerformanceCounter.Counters["bck_working_set"].Average,
                     PerformanceCounter.Counters["fwd_visited_set"].Average
-                    // PerformanceCounter.Counters["bck_visited_set"].Average
                 );
             };
 

@@ -44,10 +44,36 @@ namespace soko
         }
 
 
+        /**
+            Insert(key):
+            - check if exists - FindEntryIdx()
+            - yes => return false
+            - no => need to insert (return true at the end)
+            - AcquireReaderLock()
+            - check if table changed (resized)!
+            - insert...
+            - Interlocked.Increment(ref count);
+            - ReleaseReaderLock()
+
+            - If need to resize:
+            - AcquireWriteLock()
+            - check if it has already been resized -> yes: exit
+            - copy table to new_table
+            - ReleaseWriteLock()
+
+            Get(key):
+            - snapshot table
+            - FindEntryIdx(table, key)
+            - return table[idx]
+
+            FindEntryIdx(table, key):
+            - does not need to lock        
+        */
+
         /// <returns>true if inserted, false if already present</returns>
         public bool TryAdd(ulong key, TValue value, out TValue existingValue)
         {
-            var _table = Volatile.Read(ref table);      // do we need volatile?
+            var _table = Volatile.Read(ref table);
             int idx = FindKeyOrEmpty(_table, key);
             if (_table.keys[idx] == key)
             {
