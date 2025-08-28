@@ -1,117 +1,203 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace soko 
 {
     public class CompactHashTable<TValue>
     {
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        private struct HashEntry<TEntryValue> {
+        private struct HashEntry<TEntryValue>
+        {
             public ulong key;
             public TEntryValue value;
         }
 
-        private HashEntry<TValue>[] entries;
+        private const ulong LOCKED_STATE = 1;
+        private const int BucketSizeBits = 2;
+        private const int BucketSize = 1 << BucketSizeBits;
+
+        private class Table
+        {
+            public readonly int sizeBits;
+            public readonly int bucketBits;
+            public readonly ulong bucketMask;
+            public readonly HashEntry<TValue>[] entries;
+
+            public Table(int minimumSize)
+            {
+                sizeBits = FindPowerOfTwoAbove(minimumSize);
+                bucketBits = sizeBits - BucketSizeBits;
+                bucketMask = (1UL << bucketBits) - 1;
+
+                entries = new HashEntry<TValue>[1 << sizeBits];
+            }
+        }
+
         private int count = 0;
         private float loadFactor;
         private int sizeTimesLoadFactor;
 
-        // private readonly object sync = new();
+        private Table table;
 
         public int Count { get => count; }
 
         public CompactHashTable(int minimumSize, float loadFactor = 0.75f)
         {
             this.loadFactor = loadFactor;
-            entries = new HashEntry<TValue>[FindPrimeAbove(minimumSize)];
-            sizeTimesLoadFactor = (int)(entries.Length * loadFactor);
+            table = new Table(minimumSize);
+            sizeTimesLoadFactor = (int)(table.entries.Length * loadFactor);
         }
 
         /// <returns>true if inserted, false if already present</returns>
         public bool TryAdd(ulong key, TValue value)
         {
-            /* lock (sync) */ {
-                if (InternalAdd(key, value)) {
-                    ++count;
-                    CheckLoadFactor();
-                    return true;
-                }
-                return false;
+            if (InternalAdd(key, value))
+            {
+                Interlocked.Increment(ref count);
+                CheckLoadFactor();
+                return true;
             }
+            return false;
         }
 
-        public bool ContainsKey(ulong key)
-        {
-            /* lock (sync) */ {
-                return entries[FindEntry(key)].key != 0;
-            }
-        }
-
-        public TValue this[ulong key] 
-        {
-            get { /* lock (sync) */ { return entries[FindEntry(key)].value; } }
-        }
-
-        // linear probing
-        private int FindEntry(ulong key)
-        {
-            int size = entries.Length;
-            int idx = (int)(key % (ulong)size);
-            ref HashEntry<TValue> item = ref entries[idx];
-
-            while (item.key != 0 && item.key != key) {
-                if (++idx == size) idx = 0;
-                item = ref entries[idx];
-            }
-            return idx;
-        }
-
+        public TValue this[ulong key] => table.entries[FindKeyOrEmpty(table, key)].value;
 
         /// <returns>true if inserted, false if already present</returns>
         private bool InternalAdd(ulong key, TValue value)
         {
-            int idx = FindEntry(key);
-            if (entries[idx].key == key) return false;
-            entries[idx] = new HashEntry<TValue> { key = key, value = value };
-            return true;
+            while (true)
+            {
+                var _table = Volatile.Read(ref table);
+                int idx = FindKeyOrEmpty(_table, key);
+                if (_table.entries[idx].key == key) return false;
+
+                // attempt to insert
+
+                // first need to lock
+                if (Interlocked.CompareExchange(ref _resizing, 1, 0) != 0)
+                {
+                    // lock failed, wait and retry 
+                    Thread.SpinWait(16);
+                    continue;
+                }
+
+                if (Interlocked.CompareExchange(ref table.entries[idx].key, LOCKED_STATE, 0) == 0)
+                    {
+                        // Success! We own this slot now.
+                        // Write the value FIRST.
+                        table.entries[idx].value = value;
+
+                        // "Publish" the real key. This must be a volatile write
+                        // to ensure the value write is visible before the key. This also unlocks.
+                        Volatile.Write(ref table.entries[idx].key, key);
+                        return true;
+                    }
+                // at this point, another thread might have inserted a key, so just retry with FindKeyOrEmpty (it will spin if the slot is locked)
+            }
         }
 
+        private void LockedInsert(Table table, ulong key, TValue value)
+        {
+            int idx = FindKeyOrEmpty(table, key);
+            table.entries[idx].value = value;
+            table.entries[idx].key = key;
+        }
+
+
+        private int _resizing = 0;
         private void CheckLoadFactor()
         {
-            if (count > sizeTimesLoadFactor) {
-                var oldEntries = entries;
-                entries = new HashEntry<TValue>[FindPrimeAbove(entries.Length * 7 / 4)];   // 1.75x
-                sizeTimesLoadFactor = (int)(entries.Length * loadFactor);
+            if (count < sizeTimesLoadFactor) return;
 
-                foreach (var item in oldEntries) {
-                    if (item.key != 0) InternalAdd(item.key, item.value);
-                }
+            if (Interlocked.CompareExchange(ref _resizing, 1, 0) != 0) return; // another thread is doing it
+
+
+
+            var table2 = new Table(table.entries.Length * 2);
+
+            for (var idx = 0; idx < table.entries.Length; idx++)
+            {
+                ref var item = ref table.entries[idx];
+                if (item.key != 0) LockedInsert(table2, item.key, item.value);
             }
         }
 
         /** util functions - move them somewhere else? **/
 
-        // https://en.wikipedia.org/wiki/Primality_test
-        static bool IsPrime(int n)
+
+        static int FindPowerOfTwoAbove(int minSize)
         {
-            if (n == 2 || n == 3) return true;
+            int bits = 4;
+            while ((1 << bits) < minSize) bits++;
+            return bits;
+        }
 
-            if (n <= 1 || n % 2 == 0 || n % 3 == 0) return false;
 
-            for (int i = 5; i * i <= n; i += 6) {
-                if (n % i == 0 || n % (i + 2) == 0) return false;
+        private int FindKeyOrEmpty(Table table, ulong key)
+        {
+            // Probe b1
+            int b1bucketIdx = (int)(key & table.bucketMask);
+            int idx = b1bucketIdx << BucketSizeBits;
+            for (int i = 0; i < BucketSize; i++, idx++)
+            {
+                while (true)
+                {
+                    ulong foundKey = Volatile.Read(ref table.entries[idx].key);
+
+                    if (foundKey == 0 || foundKey == key) return idx;
+
+                    if (foundKey == LOCKED_STATE)
+                    {
+                        // Someone is inserting here —> spin 
+                        Thread.SpinWait(1);
+                        continue;
+                    }
+                    break;
+                }
             }
+            // Probe b2
+            int b2bucketIdx = (int)((key >> table.bucketBits) & table.bucketMask);
+            idx = b2bucketIdx << BucketSizeBits;
+            for (int i = 0; i < BucketSize; i++, idx++)
+            {
+                while (true)
+                {
+                    ulong foundKey = Volatile.Read(ref table.entries[idx].key);
 
-            return true;
+                    if (foundKey == 0 || foundKey == key) return idx;
+
+                    if (foundKey == LOCKED_STATE)
+                    {
+                        // Someone is inserting here —> spin 
+                        Thread.SpinWait(1);
+                        continue;
+                    }
+                    break;
+                }
+            }
+            // Linear Probe b3
+            idx = (b1bucketIdx ^ b2bucketIdx) << BucketSizeBits;
+
+            while (true)
+            {
+                ulong foundKey = Volatile.Read(ref table.entries[idx].key);
+
+                if (foundKey == 0 || foundKey == key) return idx;
+
+                if (foundKey == LOCKED_STATE)
+                {
+                    // Someone is inserting here —> spin 
+                    Thread.SpinWait(1);
+                    continue;
+                }
+
+                if (++idx >= table.entries.Length) idx = 0;
+            }
         }
 
-        static int FindPrimeAbove(int n)
-        {
-            // for now, just check the odd numbers
-            if ((n & 1) == 0) n++;
-            while (!IsPrime(n)) n += 2;
-            return n;
-        }
+
+
 
     }
 }

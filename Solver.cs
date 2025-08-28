@@ -74,8 +74,8 @@ namespace soko
             sourceAncestors2 = new DynamicList<HashState>(100);
             targetAncestors2 = new DynamicList<HashState>(100);
 
-            forwardVisitedStates = new StateTable(1<<17);
-            backwardVisitedStates = new StateTableBack(1<<17);
+            forwardVisitedStates = new StateTable(1<<20);
+            backwardVisitedStates = new StateTableBack(1<<20);
 
             statesToProcess = new StatesToProcess();
             statesToProcessBck = new StatesToProcessBck();
