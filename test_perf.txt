@@ -9,7 +9,19 @@ NO moves_list:
  0:00:59.6 Mem/Accu: 2836 / 6163 MB, GC: 399/6/1 States: 10,391,814 / 12,808,009; 15,514,656 / 22,966,762 Rates: 89653 / 193857; 229132 / 350971                     ^C
  0:00:59.9 AVG Rates: 174232 / 214742; 260123 / 385067  Add/Insert/Find: 34_186_497, 23_068_299, 305_032_750      
 
- CompactHash 2 threads, with NO RW_lock (yet)
+CompactHash 2 threads, with NO RW_lock (yet)
 
  0:00:59.6 Mem/Accu: 2056 / 4988 MB, GC: 371/7/2 States: 3,998,537 / 7,905,954; 14,804,769 / 22,048,748 Rates: -18187 / 58802; 194687 / 308774                     ^C
  0:01:00.0 AVG Rates: 67043 / 132559; 248231 / 369691   
+
+CompactHash 2 threads, 1 visited_states, RW lock (my impl)
+ 0:01:00.1 Mem/Accu: 2176 / 6166 MB, GC: 412/7/3 States: 3,274,092 / 14,797,431; 31,226,846  Rates: 37383 / 196829; 470973                      ^C
+ 0:01:00.2 AVG Rates: 54443 / 246057; 519251     
+
+CompactHash 2 threads, 1 visited_states, RW lock (GPT impl) load_factor =  0.75
+ 0:01:00.1 Mem/Accu: 2333 / 6299 MB, GC: 380/8/3 States: 12,009,019 / 15,864,225; 35,969,904  Rates: 202576 / 246128; 602930                      ^C
+ 0:01:00.4 AVG Rates: 199672 / 263772; 598066 
+
+CompactHash 2 threads, 1 visited_states, RW lock (GPT impl) load_factor =  0.9
+ 0:00:59.6 Mem/Accu: 2374 / 7005 MB, GC: 469/8/3 States: 8,430,999 / 14,424,041; 37,062,198  Rates: 64683 / 195866; 523815                      ^C
+ 0:00:59.9 AVG Rates: 141354 / 241834; 621386  

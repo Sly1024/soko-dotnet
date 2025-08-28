@@ -5,7 +5,7 @@ namespace soko
     public class CompactHashTable<TValue>
     {
         private const ulong LOCKED_STATE = 1;
-        private const int BucketSizeBits = 2;
+        private const int BucketSizeBits = 3;
         private const int BucketSize = 1 << BucketSizeBits;
 
         private readonly ReaderWriterLockFast rwLock = new ();
@@ -36,7 +36,7 @@ namespace soko
 
         public int Count => count;
 
-        public CompactHashTable(int minimumSize, float loadFactor = 0.75f)
+        public CompactHashTable(int minimumSize, float loadFactor = 0.9f)
         {
             this.loadFactor = loadFactor;
             table = new Table(minimumSize);
@@ -45,11 +45,15 @@ namespace soko
 
 
         /// <returns>true if inserted, false if already present</returns>
-        public bool TryAdd(ulong key, TValue value)
+        public bool TryAdd(ulong key, TValue value, out TValue existingValue)
         {
             var _table = Volatile.Read(ref table);      // do we need volatile?
             int idx = FindKeyOrEmpty(_table, key);
-            if (_table.keys[idx] == key) return false;
+            if (_table.keys[idx] == key)
+            {
+                existingValue = _table.values[idx];
+                return false;
+            }
 
             rwLock.AcquireReadLock();   // resize is blocked until we release the read lock
 
@@ -62,6 +66,7 @@ namespace soko
                 if (_table.keys[idx] == key)
                 {
                     rwLock.ReleaseReadLock();
+                    existingValue = _table.values[idx];
                     return false;
                 }
             }
@@ -80,7 +85,7 @@ namespace soko
                     rwLock.ReleaseReadLock();
 
                     CheckLoadFactor();
-
+                    existingValue = default;
                     return true;
                 }
                 Thread.SpinWait(1);
@@ -91,11 +96,15 @@ namespace soko
                 if (_table.keys[idx] == key)
                 {
                     rwLock.ReleaseReadLock();
+                    existingValue = _table.values[idx];
                     return false;
                 }
             }
         }
 
+        /// <summary>
+        /// Only use with known keys, otherwise this may return invalid values.
+        /// </summary>
         public TValue this[ulong key]
         {
             get
@@ -134,7 +143,7 @@ namespace soko
             rwLock.ReleaseWriteLock();
         }
 
-        /** static util functions **/
+        /** static functions **/
 
 
         private static int FindPowerOfTwoAbove(int minSize)

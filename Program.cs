@@ -26,12 +26,12 @@ namespace soko
             Console.CancelKeyPress += (sender, e) =>
             {
                 Console.WriteLine("");
-                Console.Write(" {0:h\\:mm\\:ss\\.f} AVG Rates: {1:0} / {2:0}; {3:0} / {4:0}                     ",
+                Console.Write(" {0:h\\:mm\\:ss\\.f} AVG Rates: {1:0} / {2:0}; {3:0}                      ",
                     watch.Elapsed,
                     PerformanceCounter.Counters["fwd_working_set"].Average,
-                    PerformanceCounter.Counters["fwd_visited_set"].Average,
                     PerformanceCounter.Counters["bck_working_set"].Average,
-                    PerformanceCounter.Counters["bck_visited_set"].Average
+                    PerformanceCounter.Counters["fwd_visited_set"].Average
+                    // PerformanceCounter.Counters["bck_visited_set"].Average
                 );
             };
 
@@ -59,7 +59,7 @@ namespace soko
             Console.WriteLine();
             Console.WriteLine("Time: " + watch.Elapsed);
 
-            solver.PrintSolution();
+            // solver.PrintSolution();
         }
 
         private static async Task PrintStats()
@@ -67,7 +67,7 @@ namespace soko
             PerformanceCounter.Register("fwd_working_set", () => solver.statesToProcess.Count);
             PerformanceCounter.Register("bck_working_set", () => solver.statesToProcessBck.Count);
             PerformanceCounter.Register("fwd_visited_set", () => solver.forwardVisitedStates.Count);
-            PerformanceCounter.Register("bck_visited_set", () => solver.backwardVisitedStates.Count);
+            // PerformanceCounter.Register("bck_visited_set", () => solver.backwardVisitedStates.Count);
 
 
             while (!finished)
@@ -87,21 +87,23 @@ namespace soko
         {
             var elapsed = watch.Elapsed.TotalSeconds;
 
-            Console.Write("\r {0:h\\:mm\\:ss\\.f} Mem/Accu: {1} / {2} MB, GC: {3}/{4}/{5} States: {6:n0} / {7:n0}; {8:n0} / {9:n0} Rates: {10:0} / {11:0}; {12:0} / {13:0}                     ", /* BranchF: {6:0.00} */
+            Console.Write("\r {0:h\\:mm\\:ss\\.f} Mem/Accu: {1} / {2} MB, GC: {3}/{4}/{5} States: {6:n0} / {7:n0}; {8:n0}  Rates: {9:0} / {10:0}; {11:0}                      ", /* BranchF: {6:0.00} */
                 watch.Elapsed,
                 Process.GetCurrentProcess().WorkingSet64 >> 20,
                 GC.GetTotalAllocatedBytes() >> 20,
                 GC.CollectionCount(0),
                 GC.CollectionCount(1),
                 GC.CollectionCount(2),
+                // States
                 solver.statesToProcess.Count,
-                solver.forwardVisitedStates.Count,
                 solver.statesToProcessBck.Count,
-                solver.backwardVisitedStates.Count,
+                solver.forwardVisitedStates.Count,
+                // solver.backwardVisitedStates.Count,
+                // Rates
                 PerformanceCounter.Counters["fwd_working_set"].Tick(elapsed),
-                PerformanceCounter.Counters["fwd_visited_set"].Tick(elapsed),
                 PerformanceCounter.Counters["bck_working_set"].Tick(elapsed),
-                PerformanceCounter.Counters["bck_visited_set"].Tick(elapsed)
+                PerformanceCounter.Counters["fwd_visited_set"].Tick(elapsed)
+                // PerformanceCounter.Counters["bck_visited_set"].Tick(elapsed)
             // solver.movesFwd.Count, solver.movesFwd.items.Length,
             // solver.movesBck.Count, solver.movesBck.items.Length, 
 

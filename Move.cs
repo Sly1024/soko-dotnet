@@ -27,9 +27,16 @@ namespace soko
         // {
         //     encoded |= 1 << 15;
         // }
-        public void SetBackwardStateBit()
+        public bool BackwardStateBit
         {
-            encoded |= 1 << 15;
+            get => (encoded >> 15) == 1;
+            set {
+                if (value) {
+                    encoded |= 1 << 15;
+                } else {
+                    encoded &= (1 << 15) - 1;
+                }
+            }
         }
 
         public override string ToString()
