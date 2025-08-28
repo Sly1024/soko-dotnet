@@ -22,14 +22,14 @@ namespace soko
             prevReachable = new PlayerReachable(level, initialBoxPositions, initialPlayerPosition);
         }
 
-        public int InsertPossiblePushMovesInto(MoveRanges moves, Move cameFrom)
-        {
-            moves.StartAddRange();
+        // public int InsertPossiblePushMovesInto(MoveRanges moves, Move cameFrom)
+        // {
+        //     moves.StartAddRange();
 
-            foreach (Move m in GetPossiblePushMoves(cameFrom)) moves.AddRangeItem(m);
+        //     foreach (Move m in GetPossiblePushMoves(cameFrom)) moves.AddRangeItem(m);
 
-            return moves.FinishAddRange();
-        }
+        //     return moves.FinishAddRange();
+        // }
 
         public IEnumerable<Move> GetPossiblePushMoves(Move cameFrom)
         {
@@ -71,14 +71,14 @@ namespace soko
 
         }
         
-        public int InsertPossiblePullMovesInto(MoveRanges moves, Move cameFrom)
-        {
-            moves.StartAddRange();
+        // public int InsertPossiblePullMovesInto(MoveRanges moves, Move cameFrom)
+        // {
+        //     moves.StartAddRange();
 
-            foreach (Move m in GetPossiblePullMoves(cameFrom)) moves.AddRangeItem(m);
+        //     foreach (Move m in GetPossiblePullMoves(cameFrom)) moves.AddRangeItem(m);
 
-            return moves.FinishAddRange();
-        }
+        //     return moves.FinishAddRange();
+        // }
         public IEnumerable<Move> GetPossiblePullMoves(Move cameFrom)
         {
             reachable.CalculateMap();

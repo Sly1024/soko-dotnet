@@ -1,132 +1,143 @@
-using System;
-using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace soko 
 {
     public class CompactHashTable<TValue>
     {
-        [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        private struct HashEntry<TEntryValue>
-        {
-            public ulong key;
-            public TEntryValue value;
-        }
-
         private const ulong LOCKED_STATE = 1;
         private const int BucketSizeBits = 2;
         private const int BucketSize = 1 << BucketSizeBits;
 
+        private readonly ReaderWriterLockFast rwLock = new ();
         private class Table
         {
-            public readonly int sizeBits;
             public readonly int bucketBits;
             public readonly ulong bucketMask;
-            public readonly HashEntry<TValue>[] entries;
+
+            public readonly ulong[] keys;
+            public readonly TValue[] values;
 
             public Table(int minimumSize)
             {
-                sizeBits = FindPowerOfTwoAbove(minimumSize);
+                var sizeBits = FindPowerOfTwoAbove(minimumSize);
                 bucketBits = sizeBits - BucketSizeBits;
                 bucketMask = (1UL << bucketBits) - 1;
 
-                entries = new HashEntry<TValue>[1 << sizeBits];
+                keys = new ulong[1 << sizeBits];
+                values = new TValue[1 << sizeBits];
             }
         }
 
         private int count = 0;
-        private float loadFactor;
+        private readonly float loadFactor;
         private int sizeTimesLoadFactor;
 
         private Table table;
 
-        public int Count { get => count; }
+        public int Count => count;
 
         public CompactHashTable(int minimumSize, float loadFactor = 0.75f)
         {
             this.loadFactor = loadFactor;
             table = new Table(minimumSize);
-            sizeTimesLoadFactor = (int)(table.entries.Length * loadFactor);
+            sizeTimesLoadFactor = (int)(table.keys.Length * loadFactor);
         }
+
 
         /// <returns>true if inserted, false if already present</returns>
         public bool TryAdd(ulong key, TValue value)
         {
-            if (InternalAdd(key, value))
+            var _table = Volatile.Read(ref table);      // do we need volatile?
+            int idx = FindKeyOrEmpty(_table, key);
+            if (_table.keys[idx] == key) return false;
+
+            rwLock.AcquireReadLock();   // resize is blocked until we release the read lock
+
+            // check if table changed (resized)
+            var _table2 = Volatile.Read(ref table);
+            if (_table != _table2)
             {
-                Interlocked.Increment(ref count);
-                CheckLoadFactor();
-                return true;
+                _table = _table2;
+                idx = FindKeyOrEmpty(_table, key);
+                if (_table.keys[idx] == key)
+                {
+                    rwLock.ReleaseReadLock();
+                    return false;
+                }
             }
-            return false;
-        }
 
-        public TValue this[ulong key] => table.entries[FindKeyOrEmpty(table, key)].value;
-
-        /// <returns>true if inserted, false if already present</returns>
-        private bool InternalAdd(ulong key, TValue value)
-        {
             while (true)
             {
-                var _table = Volatile.Read(ref table);
-                int idx = FindKeyOrEmpty(_table, key);
-                if (_table.entries[idx].key == key) return false;
-
-                // attempt to insert
-
-                // first need to lock
-                if (Interlocked.CompareExchange(ref _resizing, 1, 0) != 0)
+                if (Interlocked.CompareExchange(ref _table.keys[idx], LOCKED_STATE, 0) == 0)
                 {
-                    // lock failed, wait and retry 
-                    Thread.SpinWait(16);
-                    continue;
+                    // Success! We own this slot now. Write the value FIRST.
+                    _table.values[idx] = value;
+
+                    // "Publish" the real key. This must be a volatile write
+                    // to ensure the value write is visible before the key. This also unlocks.
+                    Volatile.Write(ref _table.keys[idx], key);
+                    Interlocked.Increment(ref count);
+                    rwLock.ReleaseReadLock();
+
+                    CheckLoadFactor();
+
+                    return true;
                 }
+                Thread.SpinWait(1);
 
-                if (Interlocked.CompareExchange(ref table.entries[idx].key, LOCKED_STATE, 0) == 0)
-                    {
-                        // Success! We own this slot now.
-                        // Write the value FIRST.
-                        table.entries[idx].value = value;
-
-                        // "Publish" the real key. This must be a volatile write
-                        // to ensure the value write is visible before the key. This also unlocks.
-                        Volatile.Write(ref table.entries[idx].key, key);
-                        return true;
-                    }
-                // at this point, another thread might have inserted a key, so just retry with FindKeyOrEmpty (it will spin if the slot is locked)
+                // at this point, another thread might have inserted a key, so just retry with FindKeyOrEmpty()
+                // TODO[optimize]: we don't need to start from the first probe index, we could continue!
+                idx = FindKeyOrEmpty(_table, key);
+                if (_table.keys[idx] == key)
+                {
+                    rwLock.ReleaseReadLock();
+                    return false;
+                }
             }
         }
 
-        private void LockedInsert(Table table, ulong key, TValue value)
+        public TValue this[ulong key]
         {
-            int idx = FindKeyOrEmpty(table, key);
-            table.entries[idx].value = value;
-            table.entries[idx].key = key;
+            get
+            {
+                var _table = table;
+                return _table.values[FindKeyOrEmpty(_table, key)];
+            }
         }
 
-
-        private int _resizing = 0;
         private void CheckLoadFactor()
         {
             if (count < sizeTimesLoadFactor) return;
 
-            if (Interlocked.CompareExchange(ref _resizing, 1, 0) != 0) return; // another thread is doing it
-
-
-
-            var table2 = new Table(table.entries.Length * 2);
-
-            for (var idx = 0; idx < table.entries.Length; idx++)
+            rwLock.AcquireWriteLock();
+            // check if in the meantime another thread had done the resize
+            if (count < sizeTimesLoadFactor)
             {
-                ref var item = ref table.entries[idx];
-                if (item.key != 0) LockedInsert(table2, item.key, item.value);
+                rwLock.ReleaseWriteLock();
+                return;
             }
+
+            var table2 = new Table(table.keys.Length * 2);
+
+            for (var idx = 0; idx < table.keys.Length; idx++)
+            {
+                var key = table.keys[idx];
+                if (key != 0)
+                {
+                    var t2_idx = FindKeyOrEmpty(table2, key);
+                    table2.keys[t2_idx] = key;
+                    table2.values[t2_idx] = table.values[idx];
+                }
+            }
+            sizeTimesLoadFactor = (int)(table2.keys.Length * loadFactor);
+            Volatile.Write(ref table, table2);
+            rwLock.ReleaseWriteLock();
         }
 
-        /** util functions - move them somewhere else? **/
+        /** static util functions **/
 
 
-        static int FindPowerOfTwoAbove(int minSize)
+        private static int FindPowerOfTwoAbove(int minSize)
         {
             int bits = 4;
             while ((1 << bits) < minSize) bits++;
@@ -134,7 +145,7 @@ namespace soko
         }
 
 
-        private int FindKeyOrEmpty(Table table, ulong key)
+        private static int FindKeyOrEmpty(Table table, ulong key)
         {
             // Probe b1
             int b1bucketIdx = (int)(key & table.bucketMask);
@@ -143,7 +154,7 @@ namespace soko
             {
                 while (true)
                 {
-                    ulong foundKey = Volatile.Read(ref table.entries[idx].key);
+                    ulong foundKey = Volatile.Read(ref table.keys[idx]);
 
                     if (foundKey == 0 || foundKey == key) return idx;
 
@@ -163,7 +174,7 @@ namespace soko
             {
                 while (true)
                 {
-                    ulong foundKey = Volatile.Read(ref table.entries[idx].key);
+                    ulong foundKey = Volatile.Read(ref table.keys[idx]);
 
                     if (foundKey == 0 || foundKey == key) return idx;
 
@@ -181,7 +192,7 @@ namespace soko
 
             while (true)
             {
-                ulong foundKey = Volatile.Read(ref table.entries[idx].key);
+                ulong foundKey = Volatile.Read(ref table.keys[idx]);
 
                 if (foundKey == 0 || foundKey == key) return idx;
 
@@ -192,11 +203,9 @@ namespace soko
                     continue;
                 }
 
-                if (++idx >= table.entries.Length) idx = 0;
+                if (++idx >= table.keys.Length) idx = 0;
             }
         }
-
-
 
 
     }

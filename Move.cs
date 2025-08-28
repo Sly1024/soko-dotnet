@@ -18,12 +18,16 @@ namespace soko
 
         public int Direction => encoded & 3;                    // Last 2 bits
         public int BoxPos => (encoded >> 2) & ((1<<12) - 1);     // next 12 bits
-        public bool IsBoxOtherSideReachable => ((encoded >> 14) & 1) == 1; // 14. bit
-        public bool IsLast => encoded >> 15 == 1;                   // first (15.) bit
+        public bool IsBoxOtherSideReachable => ((encoded >> 14) & 1) == 1; // 15. bit
+        public bool IsLast => encoded >> 15 == 1;                   // first (16.) bit
 
         public int NewBoxPos => BoxPos + Level.DirOffset[Direction]; 
 
-        public void SetLastBit()
+        // public void SetLastBit()
+        // {
+        //     encoded |= 1 << 15;
+        // }
+        public void SetBackwardStateBit()
         {
             encoded |= 1 << 15;
         }

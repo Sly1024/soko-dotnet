@@ -74,8 +74,8 @@ namespace soko
             sourceAncestors2 = new DynamicList<HashState>(100);
             targetAncestors2 = new DynamicList<HashState>(100);
 
-            forwardVisitedStates = new StateTable(1<<20);
-            backwardVisitedStates = new StateTableBack(1<<20);
+            forwardVisitedStates = new StateTable(10 << 20);
+            backwardVisitedStates = new StateTableBack(10 << 20);
 
             statesToProcess = new StatesToProcess();
             statesToProcessBck = new StatesToProcessBck();
@@ -141,8 +141,17 @@ namespace soko
 
             return Task.WhenAny([
                 // !!! HeuristicDistance re-uses private BitArrays, won't work with 2 threads!!!
+
                 Task.Run(() => { while (commonState == 0) SolveForwardOneStep(); }),
                 Task.Run(() => { while (commonState == 0) SolveReverseOneStep(); }),
+
+                // 1 thread, both sides:
+                // Task.Run(() => {
+                //     while (commonState == 0) {
+                //         SolveForwardOneStep();
+                //         SolveReverseOneStep();
+                //     }
+                // }),
             ]);
         }
 
@@ -169,7 +178,7 @@ namespace soko
 
                         if (forwardVisitedStates.TryAdd(newZHash, (stateZHash, move)))
                         {
-                            if (backwardVisitedStates.ContainsKey(newZHash))
+                            if (backwardVisitedStates[newZHash].zHash != 0)
                             {
                                 commonState = newZHash;
                                 return;
@@ -280,7 +289,7 @@ namespace soko
 
                         if (backwardVisitedStates.TryAdd(newZHash, (stateZHash, move)))
                         {
-                            if (forwardVisitedStates.ContainsKey(newZHash))
+                            if (forwardVisitedStates[newZHash].zHash != 0)
                             {
                                 commonState = newZHash;
                                 return;
@@ -358,7 +367,7 @@ namespace soko
 
 
             int pushCount = forwardSteps.Count + backwardSteps.Count;
-            Console.WriteLine($"{pushCount} ({forwardSteps.Count}/{backwardSteps.Count}) pushes, {solution.Length - pushCount} moves, " +
+            Console.WriteLine($"{pushCount} (F/B:{forwardSteps.Count}/{backwardSteps.Count}) pushes, {solution.Length - pushCount} moves, " +
                 $"deadlockrate: {fwdState.reachable._pulldeadlockCnt}/{fwdState.reachable._pullmoveCnt}" +
                 $":{bckState.reachable._pulldeadlockCnt}/{bckState.reachable._pullmoveCnt}"
                 );
