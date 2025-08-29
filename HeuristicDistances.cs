@@ -107,10 +107,10 @@ namespace soko
             return arr;
         }
 
-        private static readonly BoxGoalDistComparer bgdComparer = new();
 
         public class Computer(HeuristicDistances hDistances)
         {
+            private readonly BoxGoalDistComparer bgdComparer = new();
             private readonly HeuristicDistances hDistances = hDistances;
             private readonly int numBoxes = hDistances.numBoxes;
             private readonly FastBitArray boxUsed = new(hDistances.numBoxes);
