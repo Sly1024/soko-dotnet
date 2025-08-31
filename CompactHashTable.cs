@@ -8,7 +8,7 @@ namespace soko
         private const int BucketSizeBits = 3;
         private const int BucketSize = 1 << BucketSizeBits;
 
-        private readonly ReaderWriterLockFast rwLock = new ();
+        private readonly ReaderWriterLockSimple rwLock = new ();
         private class Table
         {
             public readonly int bucketBits;
@@ -45,13 +45,13 @@ namespace soko
 
 
         /// <returns>true if inserted, false if already present</returns>
-        public bool TryAdd(ulong key, TValue value, out TValue existingValue)
+        public bool TryAdd(ulong key, TValue value/*, out TValue existingValue*/)
         {
             var _table = Volatile.Read(ref table);      // do we need volatile?
             int idx = FindKeyOrEmpty(_table, key);
             if (_table.keys[idx] == key)
             {
-                existingValue = _table.values[idx];
+                // existingValue = _table.values[idx];
                 return false;
             }
 
@@ -66,7 +66,7 @@ namespace soko
                 if (_table.keys[idx] == key)
                 {
                     rwLock.ReleaseReadLock();
-                    existingValue = _table.values[idx];
+                    // existingValue = _table.values[idx];
                     return false;
                 }
             }
@@ -85,7 +85,7 @@ namespace soko
                     rwLock.ReleaseReadLock();
 
                     CheckLoadFactor();
-                    existingValue = default;
+                    // existingValue = default;
                     return true;
                 }
                 Thread.SpinWait(1);
@@ -96,10 +96,16 @@ namespace soko
                 if (_table.keys[idx] == key)
                 {
                     rwLock.ReleaseReadLock();
-                    existingValue = _table.values[idx];
+                    // existingValue = _table.values[idx];
                     return false;
                 }
             }
+        }
+
+        public bool ContainsKey(ulong key)
+        {
+            var _table = table;
+            return _table.keys[FindKeyOrEmpty(_table, key)] != 0;
         }
 
         /// <summary>

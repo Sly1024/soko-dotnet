@@ -25,3 +25,75 @@ CompactHash 2 threads, 1 visited_states, RW lock (GPT impl) load_factor =  0.75
 CompactHash 2 threads, 1 visited_states, RW lock (GPT impl) load_factor =  0.9
  0:00:59.6 Mem/Accu: 2374 / 7005 MB, GC: 469/8/3 States: 8,430,999 / 14,424,041; 37,062,198  Rates: 64683 / 195866; 523815                      ^C
  0:00:59.9 AVG Rates: 141354 / 241834; 621386  
+
+
+ ./levels/orig_13.sok
+Dead: 40 Free: 78
+move: 2, hashstate: 10, ptr: 8, threads: 1x2
+ 0:01:00.1 Mem/Accu: 1724 / 5721 MB, GC: 427/13/4 Active:    9.3M|  16.7M ( 202.6K| 270.5K/s) - Visited:   12.1M|  24.7M ( 223.3K| 423.5K/s)                      ^C
+ 0:01:00.5 AVG Rates: 154567 / 276896; 201915 410115     
+
+
+built-in ConcurrentQueue 
+ ~/private/shadows/soko-dotnet git:(develop) ✗ ./bin/Release/net9.0/soko ./levels/orig_13.sok
+Dead: 40 Free: 78
+move: 2, hashstate: 10, ptr: 8, threads: 5x2
+ 0:01:00.1 Mem/Accu: 2104 / 4721 MB, GC: 310/16/5 Active:   12.2M|  19.1M ( 215.4K| 318.6K/s) - Visited:   13.4M|  20.7M ( 235.1K| 344.3K/s)                      ^C
+ 0:01:00.5 AVG Rates: 203501 / 317645; 222602 343311                     
+
+ My SokoConcurrentQueue
+ ---------------------
+  ~/private/shadows/soko-dotnet git:(develop) ✗ ./bin/Release/net9.0/soko ./levels/orig_13.sok
+Dead: 40 Free: 78
+move: 2, hashstate: 10, ptr: 8, threads: 5x2
+ 0:01:00.1 Mem/Accu: 3991 / 8862 MB, GC: 510/14/6 Active:   18.9M|  31.8M ( 319.8K| 585.8K/s) - Visited:   20.7M|  35.2M ( 350.7K| 639.0K/s)                      ^C
+ 0:01:00.3 AVG Rates: 313679 / 528655; 343715 585397                     
+
+ ~/private/shadows/soko-dotnet git:(develop) ✗ ./bin/Release/net9.0/soko ./levels/orig_13.sok
+Dead: 40 Free: 78
+move: 2, hashstate: 10, ptr: 8, threads: 5x2
+ 0:01:00.1 Mem/Accu: 3364 / 7628 MB, GC: 471/13/5 Active:   12.1M|  24.5M ( 204.9K| 478.4K/s) - Visited:   13.2M|  32.1M ( 224.4K| 679.4K/s)                      ^C
+ 0:01:00.3 AVG Rates: 200325 / 406766; 219612 533329 
+
+- with WriteLock on almost empty
+ ~/private/shadows/soko-dotnet git:(develop) ✗ ./bin/Release/net9.0/soko ./levels/orig_13.sok
+Dead: 40 Free: 78
+move: 2, hashstate: 10, ptr: 8, threads: 5x2
+ 0:01:00.1 Mem/Accu: 3354 / 8527 MB, GC: 573/13/5 Active:   13.2M|  26.6M ( 235.6K| 443.1K/s) - Visited:   14.5M|  38.0M ( 261.4K| 707.5K/s)                      ^C
+ 0:01:00.4 AVG Rates: 219298 / 442138; 240856 631950
+
+ ~/private/shadows/soko-dotnet git:(develop) ✗ ./bin/Release/net9.0/soko ./levels/orig_13.sok
+Dead: 40 Free: 78
+move: 2, hashstate: 10, ptr: 8, threads: 5x2
+ 0:01:00.1 Mem/Accu: 3167 / 8602 MB, GC: 596/13/5 Active:   11.9M|  27.0M ( 205.3K| 410.5K/s) - Visited:   13.3M|  39.9M ( 230.1K| 677.8K/s)                      ^C
+ 0:01:00.4 AVG Rates: 198186 / 448006; 220950 663431  
+
+ 
+
+ ConcurrentQueueExpanding (longs)
+  ~/private/shadows/soko-dotnet git:(develop) ✗ ./bin/Release/net9.0/soko ./levels/orig_13.sok
+Dead: 40 Free: 78
+move: 2, hashstate: 10, ptr: 8, threads: 5x2
+ 0:01:00.1 Mem/Accu: 1904 / 4782 MB, GC: 294/12/5 Active:   11.7M|  17.9M ( 196.6K| 299.2K/s) - Visited:   12.7M|  19.3M ( 214.0K| 323.5K/s)                      ^C
+ 0:01:00.4 AVG Rates: 194100 / 297167; 211089 320972 
+
+ConcurrentQueueExpanding (int)
+  ~/private/shadows/soko-dotnet git:(develop) ✗ ./bin/Release/net9.0/soko ./levels/orig_13.sok
+Dead: 40 Free: 78
+move: 2, hashstate: 10, ptr: 8, threads: 5x2
+ 0:01:00.1 Mem/Accu: 2074 / 4730 MB, GC: 295/12/4 Active:    6.1M|  19.0M (  68.0K| 326.4K/s) - Visited:    8.7M|  20.7M ( 127.6K| 352.2K/s)                      ^C
+ 0:01:00.3 AVG Rates: 100912 / 315827; 144878 344271  
+
+ConcurrentQueueExpanding (int) no SpinWait
+ ~/private/shadows/soko-dotnet git:(develop) ✗ ./bin/Release/net9.0/soko ./levels/orig_13.sok
+Dead: 40 Free: 78
+move: 2, hashstate: 10, ptr: 8, threads: 5x2
+ 0:01:00.1 Mem/Accu: 2083 / 4869 MB, GC: 306/13/5 Active:   11.7M|  19.5M ( 197.8K| 326.7K/s) - Visited:   12.5M|  21.1M ( 213.1K| 356.0K/s)                      ^C
+ 0:01:00.4 AVG Rates: 193722 / 324596; 208397 351035 
+
+ConcurrentQueue3 (int) no SpinWait, no tailCommitted
+ ~/private/shadows/soko-dotnet git:(develop) ✗ ./bin/Release/net9.0/soko ./levels/orig_13.sok
+Dead: 40 Free: 78
+move: 2, hashstate: 10, ptr: 8, threads: 5x2
+ 0:01:00.1 Mem/Accu: 1808 / 4989 MB, GC: 320/13/5 Active:   13.0M|  19.0M ( 227.2K| 319.6K/s) - Visited:   14.3M|  20.7M ( 248.4K| 347.4K/s)                      ^C
+ 0:01:00.6 AVG Rates: 216150 / 315981; 237015 343516         

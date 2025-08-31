@@ -1,15 +1,10 @@
 using System;
 namespace soko
 {
-    public class DynamicList<T>
+    public class DynamicList<T>(int capacity)
     {
-        public T[] items;
+        public T[] items = new T[capacity];
         public int idx = 0;
-
-        public DynamicList(int capacity)
-        {
-            items = new T[capacity];
-        }
 
         public void Add(T item) 
         {

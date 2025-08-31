@@ -4,22 +4,19 @@ using System.Collections.Generic;
 
 namespace soko
 {
-    public class State
+    public class State(Level level, int[] initialBoxPositions, int initialPlayerPosition)
     {
-        Level level;
-        BoxPositions boxPositions;
-        ulong boxZhash;
+        readonly Level level = level;
+        readonly BoxPositions boxPositions = new(level.table.Length, initialBoxPositions);
+        readonly int initialPlayerPosition = initialPlayerPosition;
+        ulong boxZhash = level.GetZHashForBoxes(initialBoxPositions);
 
-        public PlayerReachable reachable, prevReachable;
+        public PlayerReachable reachable = new(level, initialBoxPositions, initialPlayerPosition);
+        public PlayerReachable prevReachable = new(level, initialBoxPositions, initialPlayerPosition);
 
-        public State(Level level, int[] initialBoxPositions, int initialPlayerPosition)
+        // copy ctor
+        public State(State other): this(other.level, other.boxPositions.ToArray(), other.initialPlayerPosition)
         {
-            this.level = level;
-            boxPositions = new BoxPositions(level.table.Length, initialBoxPositions);
-
-            boxZhash = level.GetZHashForBoxes(initialBoxPositions);
-            reachable = new PlayerReachable(level, initialBoxPositions, initialPlayerPosition);
-            prevReachable = new PlayerReachable(level, initialBoxPositions, initialPlayerPosition);
         }
 
         // public int InsertPossiblePushMovesInto(MoveRanges moves, Move cameFrom)

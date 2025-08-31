@@ -2,7 +2,7 @@ using System.Threading;
 
 namespace soko
 {
-    public class ReaderWriterLockFast
+    public class ReaderWriterLockSimple
     {
         // number of active readers (>=0)
         private int _readers = 0;
