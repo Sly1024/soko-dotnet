@@ -1,8 +1,4 @@
-using System.Text;
-using System;
-using System.Collections.Generic;
 using System.Threading;
-using System.Collections.Concurrent;
 using System.Threading.Tasks;
 
 namespace soko
@@ -11,14 +7,14 @@ namespace soko
     public class ConcurrentBucketedPriorityQueue<T>
     {
         private readonly ConcurrentAutoCreateList<SokoConcurrentQueue<T>> buckets;
-        private int lowestPriority;
+        public int lowestPriority;
         private int count = 0;
 
         public ConcurrentBucketedPriorityQueue(int numMaxThreads, int initialMaxPriority = 100)
         {
             buckets = new(initialMaxPriority, () => new SokoConcurrentQueue<T>(numMaxThreads));
             lowestPriority = initialMaxPriority;
-            // Task.Factory.StartNew(RepairWorker, TaskCreationOptions.LongRunning);
+            Task.Factory.StartNew(LowestPriorityDetector, TaskCreationOptions.LongRunning);
         }
 
         public void Enqueue(T item, int priority)
@@ -27,51 +23,57 @@ namespace soko
             Interlocked.Increment(ref count);
 
             // If this priority is lower than the known min, try to update
-            int current;
-            while ((current = lowestPriority) > priority)
+            int current = lowestPriority;
+            if (priority < current)
                 Interlocked.CompareExchange(ref lowestPriority, priority, current);
         }
 
         public T Dequeue()
         {
-            while (true)
+            if (Interlocked.CompareExchange(ref count, 0, 0) == 0)
             {
-                if (Interlocked.CompareExchange(ref count, 0, 0) == 0)
-                {
-                    return default!;
-                }
+                return default!;
+            }
 
-                for (int p = lowestPriority; p < buckets.Count; p++)
+            for (int p = lowestPriority; p < buckets.Count; p++)
+            {
+                if (buckets[p].TryDequeue(out var result))
                 {
-                    if (buckets[p].TryDequeue(out var result))
+                    Interlocked.Decrement(ref count);
+                    // Update lowestPriority lazily 
+                    if (buckets[p].Count == 0)
                     {
-                        Interlocked.Decrement(ref count);
-                        return result;
+                        // Move forward until next non-empty
+                        int newP = p;
+                        while (newP < buckets.Count && buckets[newP].Count == 0) newP++;
+                        Interlocked.CompareExchange(ref lowestPriority, newP, p);
                     }
-                    Interlocked.CompareExchange(ref lowestPriority, p + 1, p);
+                    return result;
                 }
             }
 
-            // return default;
+            return default;
         }
 
         public int Count => Interlocked.CompareExchange(ref count, 0, 0);
 
-        private void RepairWorker()
+        public int lpd_counter = 0;
+        private void LowestPriorityDetector()
         {
             while (true)
-            {                
-                for (int p = 0; p < Volatile.Read(ref lowestPriority); ++p)
+            {
+                for (int p = 0; p < lowestPriority; ++p)
                 {
                     if (buckets[p].Count > 0)
                     {
                         // try to lower hint
                         int cur = Volatile.Read(ref lowestPriority);
                         if (cur > p) Interlocked.CompareExchange(ref lowestPriority, p, cur);
+                        lpd_counter++;
                         break;
                     }
                 }
-                Thread.Sleep(10); // tune
+                Thread.Sleep(100); // tune
             }
         }
     }

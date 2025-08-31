@@ -84,7 +84,7 @@ public class SokoConcurrentQueue<T>
             ulong newHT = new HeadTail(ht.head + 1, ht.tail);
             if (Interlocked.CompareExchange(ref headTail, newHT, oldHt) == oldHt)
             {
-                value = buffer[ht.head & sizeMask]!;
+                value = buffer[ht.head & sizeMask];
                 success = true;
                 break;
             }

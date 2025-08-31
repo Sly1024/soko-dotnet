@@ -104,7 +104,7 @@ namespace soko
             var elapsed = watch.Elapsed.TotalSeconds;
             // Console.Write("\r {0:h\\:mm\\:ss\\.f} Mem/Accu: {1} / {2} MB, GC: {3}/{4}/{5} AStates: {6}|{7} - Visited: {8}|{9} - ARates: {10}|{11} - VRates: {12}|{13}                     ", /* BranchF: {6:0.00} */
 
-            Console.Write("\r {0:h\\:mm\\:ss\\.f} Mem/Accu: {1} / {2} MB, GC: {3}/{4}/{5} Active: {6}|{7} ({10}|{11}/s) - Visited: {8}|{9} ({12}|{13}/s)                      ", /* BranchF: {6:0.00} */
+            Console.Write("\r {0:h\\:mm\\:ss\\.f} Mem/Accu: {1} / {2} MB, GC: {3}/{4}/{5} Active: {6}|{7} ({10}|{11}/s) - Visited: {8}|{9} ({12}|{13}/s)  LP: {14}|{15}                    ", /* BranchF: {6:0.00} */
                 watch.Elapsed,
                 Process.GetCurrentProcess().WorkingSet64 >> 20,
                 GC.GetTotalAllocatedBytes() >> 20,
@@ -120,8 +120,9 @@ namespace soko
                 Num(PerformanceCounter.Counters["fwd_working_set"].Tick(elapsed)),
                 Num(PerformanceCounter.Counters["bck_working_set"].Tick(elapsed)),
                 Num(PerformanceCounter.Counters["fwd_visited_set"].Tick(elapsed)),
-                Num(PerformanceCounter.Counters["bck_visited_set"].Tick(elapsed))
-            // solver.movesFwd.Count, solver.movesFwd.items.Length,
+                Num(PerformanceCounter.Counters["bck_visited_set"].Tick(elapsed)),
+                solver.statesToProcess.lpd_counter,
+                solver.statesToProcessBck.lpd_counter
             // solver.movesBck.Count, solver.movesBck.items.Length, 
 
             // solver.statesToProcessBck.GetTop3Count()

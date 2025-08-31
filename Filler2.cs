@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 
 namespace soko {
     public class Filler2 {
-        private DynamicList<int> list = new DynamicList<int>(100);
+        private readonly DynamicList<int> list = new(100);
 
         public int Fill(int[] table, int width, int startPos, int reachable) {
             list.Clear();
