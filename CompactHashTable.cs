@@ -84,7 +84,7 @@ namespace soko
                     Interlocked.Increment(ref count);
                     rwLock.ReleaseReadLock();
 
-                    CheckLoadFactor();
+                    if (count >= sizeTimesLoadFactor) CheckLoadFactor();
                     // existingValue = default;
                     return true;
                 }
@@ -122,8 +122,6 @@ namespace soko
 
         private void CheckLoadFactor()
         {
-            if (count < sizeTimesLoadFactor) return;
-
             rwLock.AcquireWriteLock();
             // check if in the meantime another thread had done the resize
             if (count < sizeTimesLoadFactor)

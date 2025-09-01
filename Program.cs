@@ -19,17 +19,19 @@ namespace soko
 
             unsafe
             {
-                Console.WriteLine($"move: {sizeof(Move)}, hashstate: {sizeof(HashState)}, ptr: {sizeof(IntPtr)}, ToProc: {sizeof(ToProcess)}|{sizeof(ToProcessBck)} threads: {Solver.NumSolverThreadsPerSide}x2");
+                Console.WriteLine($"move: {sizeof(Move)}, hashstate: {sizeof(HashState)}, ptr: {sizeof(IntPtr)}, ToProc: {sizeof(ToProcess)}|{sizeof(ToProcessBck)} threads: 2x{Solver.NumSolverThreadsPerSide}");
             }
 
             Console.CancelKeyPress += (sender, e) =>
             {
                 Console.WriteLine("");
-                Console.Write(" {0:h\\:mm\\:ss\\.f} AVG Rates: {1:0} / {2:0}; {3:0} {4:0}                     ",
+                Console.Write(" {0:h\\:mm\\:ss\\.f} AVG Rates: {1:0} / {2:0}; {3:0} + {4:0} = {5:0}                     ",
                     watch.Elapsed,
                     PerformanceCounter.Counters["fwd_working_set"].Average,
                     PerformanceCounter.Counters["bck_working_set"].Average,
                     PerformanceCounter.Counters["fwd_visited_set"].Average,
+                    PerformanceCounter.Counters["bck_visited_set"].Average,
+                    PerformanceCounter.Counters["fwd_visited_set"].Average+
                     PerformanceCounter.Counters["bck_visited_set"].Average
                 );
             };

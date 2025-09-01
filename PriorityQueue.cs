@@ -3,16 +3,15 @@ using System.Threading.Tasks;
 
 namespace soko
 {
-
     public class ConcurrentBucketedPriorityQueue<T>
     {
-        private readonly ConcurrentAutoCreateList<SokoConcurrentQueue<T>> buckets;
+        private readonly ConcurrentAutoCreateList<ConcurrentQueueExpanding<T>> buckets;
         public int lowestPriority;
         private int count = 0;
 
-        public ConcurrentBucketedPriorityQueue(int numMaxThreads, int initialMaxPriority = 100)
+        public ConcurrentBucketedPriorityQueue(int initialMaxPriority = 100)
         {
-            buckets = new(initialMaxPriority, () => new SokoConcurrentQueue<T>(numMaxThreads));
+            buckets = new(initialMaxPriority, () => new ConcurrentQueueExpanding<T>());
             lowestPriority = initialMaxPriority;
             Task.Factory.StartNew(LowestPriorityDetector, TaskCreationOptions.LongRunning);
         }
@@ -41,11 +40,11 @@ namespace soko
                 {
                     Interlocked.Decrement(ref count);
                     // Update lowestPriority lazily 
-                    if (buckets[p].Count == 0)
+                    if (buckets[p].ReservedCount == 0)
                     {
                         // Move forward until next non-empty
                         int newP = p;
-                        while (newP < buckets.Count && buckets[newP].Count == 0) newP++;
+                        while (newP < buckets.Count && buckets[newP].ReservedCount == 0) newP++;
                         Interlocked.CompareExchange(ref lowestPriority, newP, p);
                     }
                     return result;
@@ -64,7 +63,7 @@ namespace soko
             {
                 for (int p = 0; p < lowestPriority; ++p)
                 {
-                    if (buckets[p].Count > 0)
+                    if (buckets[p].ReservedCount > 0)
                     {
                         // try to lower hint
                         int cur = Volatile.Read(ref lowestPriority);

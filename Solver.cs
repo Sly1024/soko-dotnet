@@ -26,14 +26,14 @@ namespace soko
         public static implicit operator HashState((ulong z, Move m) tuple) => new HashState { zHash = tuple.z, move = tuple.m };
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct ToProcess
     {
         public ulong state;
         // public int moveIdx;
         public int distance;
     }
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct ToProcessBck
     {
         public ulong state;
@@ -64,7 +64,7 @@ namespace soko
         public StatesToProcess statesToProcess;
         public StatesToProcessBck statesToProcessBck;
 
-        public static readonly int NumSolverThreadsPerSide = 5;  //(Environment.ProcessorCount-2) / 2;
+        public static readonly int NumSolverThreadsPerSide = 3;  //(Environment.ProcessorCount-2) / 2;
 
         public Task Solve()
         {
@@ -73,8 +73,8 @@ namespace soko
             forwardVisitedStates = new StateTable(8 << 20);    // 16M slots
             backwardVisitedStates = new StateTableBack(8 << 20);
 
-            statesToProcess = new StatesToProcess(NumSolverThreadsPerSide);
-            statesToProcessBck = new StatesToProcessBck(NumSolverThreadsPerSide);
+            statesToProcess = new StatesToProcess();
+            statesToProcessBck = new StatesToProcessBck();
 
             var fwdSolvers = new ForwardSolverThread[NumSolverThreadsPerSide];
             var bckSolvers = new BackwardSolverThread[NumSolverThreadsPerSide];
