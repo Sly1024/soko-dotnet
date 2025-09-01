@@ -97,3 +97,19 @@ Dead: 40 Free: 78
 move: 2, hashstate: 10, ptr: 8, threads: 5x2
  0:01:00.1 Mem/Accu: 1808 / 4989 MB, GC: 320/13/5 Active:   13.0M|  19.0M ( 227.2K| 319.6K/s) - Visited:   14.3M|  20.7M ( 248.4K| 347.4K/s)                      ^C
  0:01:00.6 AVG Rates: 216150 / 315981; 237015 343516         
+
+
+====== Finished ======
+ ./bin/Release/net9.0/soko ./levels/orig_2.sok
+Dead: 24 Free: 46
+move: 2, hashstate: 10, ptr: 8, ToProc: 12|16 threads: 2x3
+ 0:00:14.8 Mem/Accu: 957 / 2186 MB, GC: 156/6/3 Active:    5.7M|   4.4M ( 310.5K| 207.2K/s) - Visited:    7.5M|   6.1M ( 376.3K| 355.0K/s)  LP: 0|0                    
+Time: 00:00:14.8312720
+133 (F/B:66/67) pushes, 628 moves, deadlockrate: 0/66:0/67
+
+./bin/Release/net9.0/soko ./levels/orig_43.sok
+Dead: 27 Free: 61
+move: 2, hashstate: 10, ptr: 8, ToProc: 12|16 threads: 2x3
+ 0:00:40.1 Mem/Accu: 2583 / 6668 MB, GC: 451/9/5 Active:    8.7M|  14.8M ( 483.1K| 436.9K/s) - Visited:   15.6M|  20.4M ( 627.9K| 536.9K/s)  LP: 1|0                    
+Time: 00:00:40.1373072
+154 (F/B:77/77) pushes, 920 moves, deadlockrate: 0/77:0/77

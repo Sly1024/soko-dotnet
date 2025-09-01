@@ -4,15 +4,27 @@ using System.Collections.Generic;
 
 namespace soko
 {
-    public class State(Level level, int[] initialBoxPositions, int initialPlayerPosition)
+    public class State
     {
-        readonly Level level = level;
-        readonly BoxPositions boxPositions = new(level.table.Length, initialBoxPositions);
-        readonly int initialPlayerPosition = initialPlayerPosition;
-        ulong boxZhash = level.GetZHashForBoxes(initialBoxPositions);
+        readonly Level level;
+        readonly BoxPositions boxPositions;
+        readonly int initialPlayerPosition;
+        ulong boxZhash;
 
-        public PlayerReachable reachable = new(level, initialBoxPositions, initialPlayerPosition);
-        public PlayerReachable prevReachable = new(level, initialBoxPositions, initialPlayerPosition);
+        public PlayerReachable reachable;
+        public PlayerReachable prevReachable;
+        private HeuristicDistanceComputer hdComputer;
+
+        public State(Level level, int[] initialBoxPositions, int initialPlayerPosition)
+        {
+            this.level = level;
+            boxPositions = new(level.table.Length, initialBoxPositions);
+            this.initialPlayerPosition = initialPlayerPosition;
+            boxZhash = level.GetZHashForBoxes(initialBoxPositions);
+            reachable = new(level, initialBoxPositions, initialPlayerPosition);
+            prevReachable = new(level, initialBoxPositions, initialPlayerPosition);
+            hdComputer = new HeuristicDistanceComputer(level);
+        }
 
         // copy ctor
         public State(State other): this(other.level, other.boxPositions.ToArray(), other.initialPlayerPosition)
@@ -218,15 +230,13 @@ namespace soko
             return sb.ToString();
         }
 
-        DynamicList<(int box, int goal, int dist)> distArr1 = new DynamicList<(int box, int goal, int dist)>(100);
-        DynamicList<(int box, int goal, int dist)> distArr2 = new DynamicList<(int box, int goal, int dist)>(100);
-
-        public int GetHeuristicPushDistance() {
-            return level.distances.GetHeuristicDistance(boxPositions.list, true, distArr1);
+        public int GetHeuristicPushDistance()
+        {
+            return hdComputer.GetHeuristicDistance(boxPositions.list, true);
         }
 
         public int GetHeuristicPullDistance() {
-            return level.distances.GetHeuristicDistance(boxPositions.list, false, distArr2);
+            return hdComputer.GetHeuristicDistance(boxPositions.list, false);
         }
 
         public void CopyPrevReachable() {
