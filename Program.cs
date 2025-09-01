@@ -19,7 +19,7 @@ namespace soko
 
             unsafe
             {
-                Console.WriteLine($"move: {sizeof(Move)}, hashstate: {sizeof(HashState)}, ptr: {sizeof(IntPtr)}, threads: {Solver.NumSolverThreadsPerSide}x2");
+                Console.WriteLine($"move: {sizeof(Move)}, hashstate: {sizeof(HashState)}, ptr: {sizeof(IntPtr)}, ToProc: {sizeof(ToProcess)}|{sizeof(ToProcessBck)} threads: {Solver.NumSolverThreadsPerSide}x2");
             }
 
             Console.CancelKeyPress += (sender, e) =>
