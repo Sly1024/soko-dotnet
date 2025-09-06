@@ -60,11 +60,13 @@ namespace soko
             }
         }
 
-        public void CalculateMap() {
+        public void CalculateReachableMap()
+        {
             if (valid) return;
 
             // if currentReachable overflows
-            if (++currentReachable >= MAX_REACHABLE) {
+            if (++currentReachable >= MAX_REACHABLE)
+            {
                 ClearTable();
                 currentReachable = 1;
             }
@@ -72,6 +74,34 @@ namespace soko
             playerPosition = filler.Fill(table, width, playerPosition, currentReachable);
 
             valid = true;
+        }
+
+        public int CalculateRooms()
+        {
+            // make sure we don't overflow while computing rooms => force clearing the table
+            if (currentReachable + table.Length / 2 >= MAX_REACHABLE)
+            {
+                currentReachable = MAX_REACHABLE;
+                valid = false;
+            }
+
+            // if the current table is valid, we already have 1 room in which the player is!
+            if (!valid) CalculateReachableMap();
+
+            int minReachable = currentReachable;
+
+            // minor optimization, start in the second row, first one is full WALL, also stop before the last row
+            for (var i = width; i < table.Length - width; i++)
+            {
+                if (table[i] < minReachable)    // skip walls, boxes and already filled rooms
+                {
+                    filler.Fill(table, width, i, ++currentReachable);
+                }
+            }
+
+            valid = false;  // player's room is now not @currentReachable, we could restore if needed
+
+            return minReachable;
         }
 
         public bool this[int idx] => table[idx] == currentReachable;
@@ -140,7 +170,7 @@ namespace soko
         }
 
         public void ApplyPullMove(int boxPos, int newBoxPos, int offset) {
-            var ortho = (level.width+1) - Math.Abs(offset);
+            var ortho = (level.width + 1) - Math.Abs(offset);
 
             var boxPosReachable = (table[boxPos+offset] == currentReachable || table[boxPos+ortho] == currentReachable || table[boxPos-ortho] == currentReachable) ? currentReachable : 0;
 
@@ -174,12 +204,12 @@ namespace soko
 
         public bool ApplyPullMoveAndCheckDeadlock(int boxPos, int newBoxPos, int offset) {
             var oldReachable = table[newBoxPos];
-            var ortho = (level.width+1) - Math.Abs(offset);
+            var ortho = (level.width + 1) - Math.Abs(offset);
 
-            var boxPosReachable = (table[boxPos+offset] == currentReachable || table[boxPos+ortho] == currentReachable || table[boxPos-ortho] == currentReachable) ? currentReachable : 0;
+            var boxPosReachable = (table[boxPos + offset] == currentReachable || table[boxPos + ortho] == currentReachable || table[boxPos - ortho] == currentReachable) ? currentReachable : 0;
             table[newBoxPos] = BOX;
             table[boxPos] = boxPosReachable;
-            
+
             _pullmoveCnt++;
 
             if (isBoxPullDeadLocked(newBoxPos)) {
@@ -188,7 +218,7 @@ namespace soko
                 table[boxPos] = BOX;
                 return true;
             }
-            
+
             if (valid && (table[newBoxPos + ortho] >= BLOCKED && table[newBoxPos - ortho] >= BLOCKED) &&
                 ((boxPosReachable != currentReachable) || (
                     table[boxPos + ortho] >= currentReachable &&
@@ -206,7 +236,7 @@ namespace soko
                 valid = false;
                 playerPosition = newBoxPos - offset;
             }
-            
+
             // playerPosition = newBoxPos - offset;
             // valid = false;
 
@@ -225,7 +255,7 @@ namespace soko
                     _ => this[i] ? "." : " "
                 });
                 sb.Append(" ");
-                if (i % width == width -1) sb.Append("\n");
+                if (i % width == width - 1) sb.Append("\n");
             }
             Console.WriteLine(sb.ToString());
             Console.WriteLine($"PlayerPos: {playerPosition}");
@@ -234,19 +264,19 @@ namespace soko
         public bool isBoxPushDeadLocked(int boxPos)
         {
             markedPositions.ResetMarked();
-            
+
             if (isBoxPushable(boxPos)) return false;
 
             // we have a list of non-movable boxes, need to check if they're all on goal positions
             var blockedBoxes = markedPositions.list;
-            for (int i = markedPositions.count-1; i >= 0; --i) {
+            for (int i = markedPositions.count - 1; i >= 0; --i) {
                 if (!level.table[blockedBoxes[i]].has(Cell.Goal)) return true;
             }
 
             return false;
         }
 
-        private bool isBoxPushable(int boxPos) 
+        private bool isBoxPushable(int boxPos)
         {
             if (markedPositions.IsMarked(boxPos)) return false;
 
@@ -287,19 +317,19 @@ namespace soko
         public bool isBoxPullDeadLocked(int boxPos)
         {
             markedPositions.ResetMarked();
-            
+
             if (isBoxPullable(boxPos)) return false;
 
             // we have a list of non-movable boxes, need to check if they're all on goal positions
             var blockedBoxes = markedPositions.list;
-            for (int i = markedPositions.count-1; i >= 0; --i) {
+            for (int i = markedPositions.count - 1; i >= 0; --i) {
                 if (!level.table[blockedBoxes[i]].has(Cell.Box)) return true;
             }
 
             return false;
         }
 
-        private bool isBoxPullable(int boxPos) 
+        private bool isBoxPullable(int boxPos)
         {
             if (markedPositions.IsMarked(boxPos)) return false;
 

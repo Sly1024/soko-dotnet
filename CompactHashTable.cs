@@ -5,6 +5,7 @@ namespace soko
     public class CompactHashTable<TValue>
     {
         private const ulong LOCKED_STATE = 1;
+        public const ulong MIN_SAFE_KEY = LOCKED_STATE + 1;
         private const int BucketSizeBits = 3;
         private const int BucketSize = 1 << BucketSizeBits;
 
