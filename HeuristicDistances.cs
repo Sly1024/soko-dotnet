@@ -23,8 +23,6 @@ namespace soko
         // adding 512 (numBoxes) pieces of Unreachable without running out of int.MaxValue
         public const int Unreachable = 1 << 22;
 
-
-
         public HeuristicDistances(Level level)
         {
             this.level = level;
@@ -107,70 +105,5 @@ namespace soko
             return arr;
         }
 
-
-        public class Computer(HeuristicDistances hDistances)
-        {
-            private readonly BoxGoalDistComparer bgdComparer = new();
-            private readonly HeuristicDistances hDistances = hDistances;
-            private readonly int numBoxes = hDistances.numBoxes;
-            private readonly FastBitArray boxUsed = new(hDistances.numBoxes);
-            private readonly FastBitArray goalUsed = new(hDistances.numBoxes);
-            private readonly DynamicList<(int box, int goal, int dist)> distArr = new(100);
-
-            private readonly int[] table = hDistances.level.table;
-
-            public int GetHeuristicDistance(int[] boxPositions, bool push)
-            {
-                distArr.Clear();
-                int numBoxesAdded = 0;
-                var pushes = push ? hDistances.Pushes : hDistances.Pulls;
-
-                for (int boxIdx = 0; boxIdx < boxPositions.Length; boxIdx++)
-                {
-                    int boxPos = boxPositions[boxIdx];
-                    if (table[boxPos].has(push ? Cell.Goal : Cell.Box)) continue;
-
-                    var distances = pushes[boxPos];
-                    for (var goalIdx = 0; goalIdx < numBoxes; goalIdx++)
-                    {
-                        distArr.Add((boxIdx, goalIdx, distances[goalIdx]));
-                    }
-                    numBoxesAdded++;
-                }
-                Array.Sort(distArr.items, 0, distArr.idx, bgdComparer);
-
-                boxUsed.Clear();
-                goalUsed.Clear();
-
-                int sumDistance = 0;
-
-                for (var i = 0; i < distArr.idx; i++)
-                {
-                    var (box, goal, dist) = distArr.items[i];
-                    if (!boxUsed[box] && !goalUsed[goal])
-                    {
-                        boxUsed[box] = true;
-                        goalUsed[goal] = true;
-                        sumDistance += dist;
-                        if (--numBoxesAdded == 0) break;
-                    }
-                }
-
-                return sumDistance;
-            }
-        }
-
-        public Computer GetComputer()
-        {
-            return new Computer(this);
-        }
-
-        private class BoxGoalDistComparer : IComparer<(int box, int goal, int dist)>
-        {
-            public int Compare((int box, int goal, int dist) x, (int box, int goal, int dist) y)
-            {
-                return x.dist - y.dist;
-            }
-        }
     }
 }

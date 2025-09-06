@@ -4,15 +4,27 @@ using System.Collections.Generic;
 
 namespace soko
 {
-    public class State(Level level, int[] initialBoxPositions, int initialPlayerPosition)
+    public class State
     {
-        readonly Level level = level;
-        readonly BoxPositions boxPositions = new(level.table.Length, initialBoxPositions);
-        readonly int initialPlayerPosition = initialPlayerPosition;
-        ulong boxZhash = level.GetZHashForBoxes(initialBoxPositions);
+        readonly Level level;
+        readonly BoxPositions boxPositions;
+        readonly int initialPlayerPosition;
+        ulong boxZhash;
 
-        public PlayerReachable reachable = new(level, initialBoxPositions, initialPlayerPosition);
-        public PlayerReachable prevReachable = new(level, initialBoxPositions, initialPlayerPosition);
+        public PlayerReachable reachable;
+        public PlayerReachable prevReachable;
+        private HeuristicDistanceComputer hdComputer;
+
+        public State(Level level, int[] initialBoxPositions, int initialPlayerPosition)
+        {
+            this.level = level;
+            boxPositions = new(level.table.Length, initialBoxPositions);
+            this.initialPlayerPosition = initialPlayerPosition;
+            boxZhash = level.GetZHashForBoxes(initialBoxPositions);
+            reachable = new(level, initialBoxPositions, initialPlayerPosition);
+            prevReachable = new(level, initialBoxPositions, initialPlayerPosition);
+            hdComputer = new HeuristicDistanceComputer(level);
+        }
 
         // copy ctor
         public State(State other): this(other.level, other.boxPositions.ToArray(), other.initialPlayerPosition)
@@ -30,7 +42,7 @@ namespace soko
 
         public IEnumerable<Move> GetPossiblePushMoves(Move cameFrom)
         {
-            reachable.CalculateMap();
+            reachable.CalculateReachableMap();
 
             int cameFromOffset = 0;
             int cameFromBoxPos = 0;
@@ -78,7 +90,7 @@ namespace soko
         // }
         public IEnumerable<Move> GetPossiblePullMoves(Move cameFrom)
         {
-            reachable.CalculateMap();
+            reachable.CalculateReachableMap();
 
             int cameFromOffset = 0;
             int cameFromBoxPos = 0;
@@ -176,8 +188,10 @@ namespace soko
 
         public ulong GetZHash()
         {
-            reachable.CalculateMap();
-            return boxZhash ^ level.playerZbits[reachable.playerPosition];
+            reachable.CalculateReachableMap();
+            ulong z = boxZhash ^ level.playerZbits[reachable.playerPosition];
+            // make sure we don't generate 0 (empty) or 1 (LOCKED_STATE)
+            return z < CompactHashTable<HashState>.MIN_SAFE_KEY ? z + CompactHashTable<HashState>.MIN_SAFE_KEY : z;
         }
 
         // private bool IsPlayerReachable(int position)
@@ -218,17 +232,17 @@ namespace soko
             return sb.ToString();
         }
 
-
-        public int GetHeuristicPushDistance() {
-            return heuristicDistanceComputer.GetHeuristicDistance(boxPositions.list, true);
+        public int GetHeuristicPushDistance()
+        {
+            return hdComputer.GetHeuristicDistance(boxPositions.list, reachable, true);
         }
 
         public int GetHeuristicPullDistance() {
-            return heuristicDistanceComputer.GetHeuristicDistance(boxPositions.list, false);
+            return hdComputer.GetHeuristicDistance(boxPositions.list, reachable, false);
         }
 
         public void CopyPrevReachable() {
-            reachable.CalculateMap();
+            reachable.CalculateReachableMap();
             prevReachable.CopyFrom(reachable);
         }
     }
