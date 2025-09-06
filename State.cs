@@ -218,15 +218,13 @@ namespace soko
             return sb.ToString();
         }
 
-        DynamicList<(int box, int goal, int dist)> distArr1 = new DynamicList<(int box, int goal, int dist)>(100);
-        DynamicList<(int box, int goal, int dist)> distArr2 = new DynamicList<(int box, int goal, int dist)>(100);
 
         public int GetHeuristicPushDistance() {
-            return level.distances.GetHeuristicDistance(boxPositions.list, true, distArr1);
+            return heuristicDistanceComputer.GetHeuristicDistance(boxPositions.list, true);
         }
 
         public int GetHeuristicPullDistance() {
-            return level.distances.GetHeuristicDistance(boxPositions.list, false, distArr2);
+            return heuristicDistanceComputer.GetHeuristicDistance(boxPositions.list, false);
         }
 
         public void CopyPrevReachable() {

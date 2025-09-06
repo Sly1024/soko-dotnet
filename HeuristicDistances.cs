@@ -6,7 +6,7 @@ namespace soko
 {
     public class HeuristicDistances
     {
-        private Level level;
+        private readonly Level level;
 
         // [currentBoxPosition][goalIndex] = distance
         public int[][] Pushes;
@@ -23,10 +23,7 @@ namespace soko
         // adding 512 (numBoxes) pieces of Unreachable without running out of int.MaxValue
         public const int Unreachable = 1 << 22;
 
-        private DynamicList<(int box, int goal, int dist)> distArr;
-        private FastBitArray boxUsed;
-        private FastBitArray goalUsed;
-        private BoxGoalDistComparer bgdComparer = new BoxGoalDistComparer();
+
 
         public HeuristicDistances(Level level)
         {
@@ -43,10 +40,6 @@ namespace soko
             for (var i = 0; i < numBoxes; i++) {
                 TryPushMoves(level.boxPositions[i], i);
             }
-
-            distArr = new DynamicList<(int box, int goal, int dist)>(numBoxes * numBoxes);
-            boxUsed = new FastBitArray(numBoxes);
-            goalUsed = new FastBitArray(numBoxes);
         }
 
         private void TryPullMoves(int pos, int goalIndex)
@@ -113,44 +106,63 @@ namespace soko
             for (var i = 0; i < arr.Length; i++) arr[i] = Unreachable;
             return arr;
         }
-        
-        public int GetHeuristicDistance(int[] boxPositions, bool push, DynamicList<(int box, int goal, int dist)> distArr) 
+
+
+        public class Computer(HeuristicDistances hDistances)
         {
-            distArr.Clear();
-            int numBoxesAdded = 0;
-            var pushes = push ? level.distances.Pushes : level.distances.Pulls;
+            private readonly BoxGoalDistComparer bgdComparer = new();
+            private readonly HeuristicDistances hDistances = hDistances;
+            private readonly int numBoxes = hDistances.numBoxes;
+            private readonly FastBitArray boxUsed = new(hDistances.numBoxes);
+            private readonly FastBitArray goalUsed = new(hDistances.numBoxes);
+            private readonly DynamicList<(int box, int goal, int dist)> distArr = new(100);
 
-            for (int boxIdx = 0; boxIdx < boxPositions.Length; boxIdx++)
+            private readonly int[] table = hDistances.level.table;
+
+            public int GetHeuristicDistance(int[] boxPositions, bool push)
             {
-                int boxPos = boxPositions[boxIdx];
-                if (level.table[boxPos].has(push ? Cell.Goal : Cell.Box)) continue;
+                distArr.Clear();
+                int numBoxesAdded = 0;
+                var pushes = push ? hDistances.Pushes : hDistances.Pulls;
 
-                var distances = pushes[boxPos];
-                for (var goalIdx = 0; goalIdx < numBoxes; goalIdx++)
+                for (int boxIdx = 0; boxIdx < boxPositions.Length; boxIdx++)
                 {
-                    distArr.Add((boxIdx, goalIdx, distances[goalIdx]));
+                    int boxPos = boxPositions[boxIdx];
+                    if (table[boxPos].has(push ? Cell.Goal : Cell.Box)) continue;
+
+                    var distances = pushes[boxPos];
+                    for (var goalIdx = 0; goalIdx < numBoxes; goalIdx++)
+                    {
+                        distArr.Add((boxIdx, goalIdx, distances[goalIdx]));
+                    }
+                    numBoxesAdded++;
                 }
-                numBoxesAdded++;
-            }
-            Array.Sort(distArr.items, 0, distArr.idx, bgdComparer);
+                Array.Sort(distArr.items, 0, distArr.idx, bgdComparer);
 
-            boxUsed.Clear();
-            goalUsed.Clear();
+                boxUsed.Clear();
+                goalUsed.Clear();
 
-            int sumDistance = 0;
+                int sumDistance = 0;
 
-            for (var i = 0; i < distArr.idx; i++)
-            {
-                var (box, goal, dist) = distArr.items[i];
-                if (!boxUsed[box] && !goalUsed[goal]) {
-                    boxUsed[box] = true;
-                    goalUsed[goal] = true;
-                    sumDistance += dist;
-                    if (--numBoxesAdded == 0) break;
+                for (var i = 0; i < distArr.idx; i++)
+                {
+                    var (box, goal, dist) = distArr.items[i];
+                    if (!boxUsed[box] && !goalUsed[goal])
+                    {
+                        boxUsed[box] = true;
+                        goalUsed[goal] = true;
+                        sumDistance += dist;
+                        if (--numBoxesAdded == 0) break;
+                    }
                 }
-            }
 
-            return sumDistance;
+                return sumDistance;
+            }
+        }
+
+        public Computer GetComputer()
+        {
+            return new Computer(this);
         }
 
         private class BoxGoalDistComparer : IComparer<(int box, int goal, int dist)>

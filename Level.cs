@@ -22,7 +22,7 @@ namespace soko
 
     public class Level
     {
-        public int[] table;
+        public readonly int[] table;
         public int width;
         public int playerPosition = -1;
         public int[] boxPositions;
