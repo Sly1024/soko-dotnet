@@ -1,6 +1,6 @@
 using System;
 using System.Threading;
-namespace soko;
+namespace soko.Collections;
 
 
 public class ConcurrentQueueExpanding<T>
@@ -100,7 +100,7 @@ public class ConcurrentQueueExpanding<T>
 
             int idx = head & (_buffer.Length - 1);
             item = _buffer[idx];
-            _buffer[idx] = default!;
+            // _buffer[idx] = default!;
             success = true;
             break;
         }
