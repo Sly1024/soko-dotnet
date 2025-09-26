@@ -3,7 +3,7 @@ using System.Threading;
 namespace soko.Collections;
 
 
-public class ConcurrentQueueExpanding<T>
+public class ConcurrentExpandingQueue<T>
 {
     private T[] _buffer;
 
@@ -13,7 +13,7 @@ public class ConcurrentQueueExpanding<T>
 
     private readonly ReaderWriterLockSimple rwLock = new();
 
-    public ConcurrentQueueExpanding(int initialCapacity = 32)
+    public ConcurrentExpandingQueue(int initialCapacity = 32)
     {
         if ((initialCapacity & (initialCapacity - 1)) != 0)
             throw new ArgumentException("initialCapacity must be power-of-two");

@@ -5,13 +5,13 @@ namespace soko.Collections;
 
 public class ConcurrentBucketedPriorityQueue<T>
 {
-    private readonly ConcurrentAutoCreateList<ConcurrentQueueExpanding<T>> buckets;
+    private readonly ConcurrentAutoCreateList<ConcurrentExpandingQueue<T>> buckets;
     public int lowestPriority;
     private int count = 0;
 
     public ConcurrentBucketedPriorityQueue(int initialMaxPriority = 100)
     {
-        buckets = new(initialMaxPriority, () => new ConcurrentQueueExpanding<T>());
+        buckets = new(initialMaxPriority, () => new ConcurrentExpandingQueue<T>());
         lowestPriority = initialMaxPriority;
         Task.Factory.StartNew(LowestPriorityDetector, TaskCreationOptions.LongRunning);
     }
@@ -46,9 +46,7 @@ public class ConcurrentBucketedPriorityQueue<T>
                 while (p < buckets.Count && buckets[p].ReservedCount == 0) p++;
 
                 if (p > initialLP)
-                {
                     Interlocked.CompareExchange(ref lowestPriority, p, initialLP);
-                }
 
                 return result;
             }
