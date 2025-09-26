@@ -304,7 +304,9 @@ How do I generate the multiple indexes? I realized that the Zobrist hash is alre
 
 The 64 bits in the Zobrist hash is plenty enough to get two sets of N bits. I can get maximum 2x32 bits, but 32 bits equals 4 billion buckets, so 4x8=32 billion entries. Each hash entry is 18 bytes, so it would require 32*18=576 GB memory to fill a hashtable and this is only half of it, because we have a forward and backward hashtable. We're good for now! 
 
-Ok, but that's only 2 independent indexes I can get from a 64 bit hash code, right? Yes, and since we need a way to continue probing if we don't find the key in the 2 buckets, I decided to use `index3 = index1 XOR index2` as the starting index for the final step, which is an unlimited linear probing. This algorithm results in **~4 probes** per key-lookup with **90% max load factor**!
+Ok, but that's only 2 independent indexes I can get from a 64 bit hash code, right? Yes, and since we need a way to continue probing if we don't find the key in the 2 buckets, I decided to use `index3 = index1 XOR index2` as the starting index for the final step, which is an unlimited linear probing. This algorithm results in **~4.5 probes** per key-lookup with **90% max load factor**!
+
+UPDATE: I realized that I don't need to divide the array into disjunct 8-key buckets, I can just use the N-bit bitstring as a starting index of a 8-key contiguous strip that I scan. This way there are no "buckets", the strips overlap, but there is less chance that the first index I check is occupied. Previously, the second slot of the bucket would only be filled if the first slot was taken, but now there is a chance that another hash points to that index directly. With this change, the probes per key-lookup **went down from 4.5 to 2.5** keeping the 90% max load factor.
 
 #### What about multi-thread access?
 I was keen on doing this without locking. At least not using the traditional `lock (obj) {...}` construct. I heavily rely on the `Interlocked` functions. 

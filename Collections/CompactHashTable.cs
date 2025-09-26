@@ -21,7 +21,7 @@ public class CompactHashTable<TValue>
         public Table(int minimumSize)
         {
             var sizeBits = FindPowerOfTwoAbove(minimumSize);
-            bucketBits = sizeBits - BucketSizeBits;
+            bucketBits = sizeBits;
             bucketMask = (1UL << bucketBits) - 1;
 
             keys = new ulong[1 << sizeBits];
@@ -184,22 +184,23 @@ public class CompactHashTable<TValue>
         return bits;
     }
 
-    // public int _probe_count = 0;
-    // public int _findKeyOrEmpty_count = 0;
+    public int _probe_count = 0;
+    public int _findKeyOrEmpty_count = 0;
 
 
-    private static int FindKeyOrEmpty(Table table, ulong key)
+    private int FindKeyOrEmpty(Table table, ulong key)
     {
-        // _findKeyOrEmpty_count++;
+        int table_len = table.keys.Length;
+        _findKeyOrEmpty_count++;
 
         // Probe b1
         int b1bucketIdx = (int)(key & table.bucketMask);
-        int idx = b1bucketIdx << BucketSizeBits;
-        for (int i = 0; i < BucketSize; i++, idx++)
+        int idx = b1bucketIdx;
+        for (int i = 0; i < BucketSize; i++)
         {
             while (true)
             {
-                // _probe_count++;
+                _probe_count++;
                 ulong foundKey = Volatile.Read(ref table.keys[idx]);
 
                 if (foundKey == 0 || foundKey == key) return idx;
@@ -207,15 +208,16 @@ public class CompactHashTable<TValue>
                 // Someone is inserting here —> spin 
                 Thread.SpinWait(1);
             }
+            if (++idx >= table_len) idx = 0;
         }
         // Probe b2
         int b2bucketIdx = (int)((key >> table.bucketBits) & table.bucketMask);
-        idx = b2bucketIdx << BucketSizeBits;
-        for (int i = 0; i < BucketSize; i++, idx++)
+        idx = b2bucketIdx;
+        for (int i = 0; i < BucketSize; i++)
         {
             while (true)
             {
-                // _probe_count++;
+                _probe_count++;
                 ulong foundKey = Volatile.Read(ref table.keys[idx]);
 
                 if (foundKey == 0 || foundKey == key) return idx;
@@ -224,13 +226,13 @@ public class CompactHashTable<TValue>
                 // Someone is inserting here —> spin 
                 Thread.SpinWait(1);
             }
+            if (++idx >= table_len) idx = 0;
         }
         // Linear Probe b3
-        idx = (b1bucketIdx ^ b2bucketIdx) << BucketSizeBits;
-
+        idx = (b1bucketIdx ^ b2bucketIdx);
         while (true)
         {
-            // _probe_count++;
+            _probe_count++;
             ulong foundKey = Volatile.Read(ref table.keys[idx]);
 
             if (foundKey == 0 || foundKey == key) return idx;
@@ -242,7 +244,7 @@ public class CompactHashTable<TValue>
                 continue;
             }
 
-            if (++idx >= table.keys.Length) idx = 0;
+            if (++idx >= table_len) idx = 0;
         }
     }
 
