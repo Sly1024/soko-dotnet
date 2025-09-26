@@ -7,10 +7,10 @@
 [✓] More efficient GeneratePlayerReachable (flood-fill) - tried a scanline method, the simple 4-way with a Stack is still fast enough
 [✓] Deadlock detection
 [✓] Choosing next state based on Heuristic distance (A*)
+[✓] Multi-threading
 [ ] Maintain PossibleMoves, insted of generating it
 [ ] Maintain PlayerReachable table if possible
 [ ] Tunnel detection
 [ ] Corral detection
 [ ] Deadlock patterns
 [ ] Packing order
-[ ] Multi-threading

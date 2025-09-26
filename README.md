@@ -285,4 +285,82 @@ graph has a cost of 1 push makes it a special case compared to a graph with arbi
 the number of states (graph nodes) is so big and there is a high chance that a solution exists going through
 any specific state. This finds a less optimal solution, but does it quicker.
 
+## Phase 7 - Multi-threading (2025)
 
+In order to accomodate multi-threading, I need to use concurrent/thread-safe collections. 
+There are two main collections that we need to handle:
+
+### CompactHashTable
+Since this is a custom implementation, I have the joy of making it thread-safe :)
+There are multiple improvements since the first time I implemented it.
+
+#### New probing algorithm
+First, I decided that I needed something better than linear probing, but I was reluctant to use complicated 
+algorithms that I considered earlier. The result is a relatively "simple" idea, it's a mix of double/multiple hashing with linear probing. 
+
+Linear probing is fast, as long as there are only a few items to check. The main reason is that modern CPUs read a whole "cache line" into cache from memory at once. That's 64 bytes in most CPUs. I decided to split the single `HashEntry<TValue>[] entries` array I had into two parts: `ulong[] keys` and `TValue[] values`. This will be better for lock-free concurrency as well. I can fit 8 keys (8 ulong = 8*8 bytes) in a cache line, so it make sense to do linear probing in a 8 key "bucket". So we split the whole array into 8 key buckets and the first hash results in an index of one of the buckets, we do a linear search inside that bucket, and if we don't find the key there, then we generate a next hash with a (hopefully) different bucket index. 
+
+How do I generate the multiple indexes? I realized that the Zobrist hash is already a 64 bit "random" bitstring that is evenly distributed on the whole target range, so why don't I just use the last N bits to index the array (buckets). This means I need the size of the array to be a power of two - previously it was a prime, but I think the Zobrist hash distribution is good enough, so we can use a bit of optimization: binary bitmasking to compute the index, instead of modulo. 
+
+The 64 bits in the Zobrist hash is plenty enough to get two sets of N bits. I can get maximum 2x32 bits, but 32 bits equals 4 billion buckets, so 4x8=32 billion entries. Each hash entry is 18 bytes, so it would require 32*18=576 GB memory to fill a hashtable and this is only half of it, because we have a forward and backward hashtable. We're good for now! 
+
+Ok, but that's only 2 independent indexes I can get from a 64 bit hash code, right? Yes, and since we need a way to continue probing if we don't find the key in the 2 buckets, I decided to use `index3 = index1 XOR index2` as the starting index for the final step, which is an unlimited linear probing. This algorithm results in **~4 probes** per key-lookup with **90% max load factor**!
+
+#### What about multi-thread access?
+I was keen on doing this without locking. At least not using the traditional `lock (obj) {...}` construct. I heavily rely on the `Interlocked` functions. 
+
+What can we say about our use-case of the hashtable, that makes it easier to implement thread-safe operations?
+- We insert a key once
+- Never remove a key
+- Never update an existing entry
+
+The most critical issue occurs if two threads try to insert the same key at the same time. For this, I use a per-slot "lock" mechanism. I use the `ulong[] keys` array entries as "indicators". I had to reserve two special values that can never be valid keys:
+- 0 (zero) means the slot is empty  - same as before
+- 1 (one)  means the slot is "locked" for writing
+
+The thread that wants to write to the slot tries to "lock" it with `CompareExchange(ref keys[idx], 1, 0)`, which means "if it's 0 then write 1 there, otherwise fail". This guarantees that only one thread can lock the slot. If it's successful, it writes the value into `values[idx]` and then "commits" the write by writing the valid key into `keys[idx]`. Any other reader/writer thread will SpinWait() if the key slot is 1 (locked). This also guarantess that a reader will not read the payload from `values[]` while it's being written, only when the key is in its place.
+
+What happens if the hashtable gets "full" ? We need to double the size to keep it as a power-of-two. The "only" issue is that we need to copy the entries into the new array and basically "re-hash" each item. While we do this, we **cannot allow any other thread to write** to the hashtable! Reads are OK, but we need some kind-of exclusive lock here to prevent threads from writing to it. With the per-slot locking, during normal operation, multiple threads can write, but when we need to resize, we have to stop them. This logic is very similar to *ReaderWriterLock*! In fact that is what I use here. I implemented my own `ReaderWriterLockSimple` which uses `Interlocked` functions. This is a "dumb" implementation, if the lock/release functions are not used in the correct order, it won't work! I know that the name is misleading, because it should be "WriterResizerLock", but I'll stick to the traditional naming.
+
+All operations are thread-safe now, without using heavy locks. The threads will SpinWait if there is contention. 
+
+### PriorityQueue
+The other collection that is used heavily is the priority queue for the A* "working set". 
+This far I used the built-in `System.Collections.Generic.PriorityQueue<TElement, TPriority>`, but there is no concurrent version of this. At least not in the BCL. There are third party libraries that implement this, but most just uses `lock ()`, which I wanted to avoid. Of course, I had to write my own! 
+
+Assumptions / Requirements:
+- The priority values are small-ish integers (0 - 1000) - this is because it's the number of pushes needed to solve the level and the levels I'm looking at are relatively small.
+- Multiple threads will Enqueue/Dequeue 
+- Need an efficient way to return "a lowest priority item". 
+
+I implemented a `ConcurrentBucketedPriorityQueue`. The main idea is that because the priority values are low integers, we can use "buckets" to store items with the same priority. We can use an array and index it with the priority value. It stores the priority values implicitly in the index of the "bucket". Each bucket is a `ConcurrentExpandingQueue`. 
+
+#### ConcurrentExpandingQueue
+This also needs to be thread-safe and lock-free, of course! It uses an array as a ring buffer, similar to the normal `Queue<T>` implementation. There is a `head` index where `Dequeue()` takes the items from, but there are two "tail" indexes: `tailReserved` and `tailCommitted`. This is needed becuase the `Enqueue()` operation first needs to reserve a slot by incrementing `tailReserved` and then write the data into that index, and finally increment `tailCommitted`. The `Dequeue()` only reads what is already committed. 
+
+If there was only one tail index, then the reader (Dequeue) would think that the data is already there if the index was increased, so it could happen that the writer had not finished writing the data, so the reader would read incorrect data. Again, all operations use `Interlocked` functions to guarantee atomicity for the threads. 
+
+The "Expanding" in the name indicates that it auto-expands when the queue is full. It's using the exact same mechanism as CompactHashTable: `ReaderWriterLockSimple`.
+
+NOTE: In theory, for the PriorityQueue, we don't necessarily need a FIFO, we just need to return *any* item with the lowest priority. For a bucket, we could use a stack (LIFO), but in that case the contention would be higher, because both the readers and writers would try to access the same side (tail or top) of the array.
+
+#### ConcurrentAutoCreateList
+The bucketed priority queue has a list of queues (`ConcurrentAutoCreateList<ConcurrentExpandingQueue<T>> buckets`). The queue implementation we discussed already, but the list that holds the queues is custom as well. Initially, the list starts "empty". It has an initial capacity (100) which gets expanded as soon as you index a bucket that is out of the capacity limit. Each "item" (queue) starts as `null` and only gets created when it is accessed. This requires some synchronisation, because if two threads try to create the bucket at the same index, then we need to make sure there's only one bucket/queue that gets used by both threads. This is done by providing a factory() function and the same thing as before : `Interlocked`.
+
+#### Keeping track of the lowest priority bucket
+Now, this one was a real challenge! And I used a dirty hack to work around it.
+
+Let's say we want too keep an `int lowestPriority` that always tells us which bucket is the lowest, non-empty one. The `Enqueue()` needs to lower this if somebody puts a lower priority item in the PQ. The `Dequeue()` needs to increase the value if we took out the last item from that priority bucket. Simple, right?
+
+The problem manifests when Dequeue() takes out the last value from a bucket, so it scans for the next non-empty bucket, but in the meantime another thread puts a new item into that same priority bucket. The value of `lowestPriority` - at this point - is still the same, so the writer does not try to update it, because the new item's priority is not lower. If Dequeue() determines the new (higher) value, it could use a `CompareExchange()` but since the value has not changed, it would commit the new value. At this point we have an item in the PQ with low priority which might not get dequeued because the `lowestPriority` is pointing to a higher bucket!
+
+Dequeue() could re-check before the `CompareExchange()` if the bucket it took from is still empty at this point, but there is always a chance that another thread inserts an item to exactly that bucket between checking (Count=0) and updating the `lowestPriority`. The only solution - that I can see - is to lock the whole bucket while taking an item from it and updating `lowestPriority`, so no other thread could insert (Enqueue) an item. That is very restricting locking that I want to avoid!
+
+How do we fix this? We don't! 
+
+What happens if this issue manifests? The `lowestPriority` is incorrect, it's higher than the real lowest priority non-empty bucket. So the next Dequeue() will return an item which is not the real lowest priority. Is that a problem? Not really, as long as that item will get dequeued *eventually*. Yes, we might be processing non-optimal states for a while, but since the goal of the solver was never to find the optimal solution, just find one, "this is fine". 
+
+OK, but we need to get to that state eventually, right? My dirty hack is to run a background "cleanup" thread that scans the `0..lowestPriority` range and adjusts the `lowestPriority` value if it finds a non-empty bucket. It could be tuned as needed, but I set it to run the check every 100ms. In most runs this issue never manifests, but sometimes I saw 1 or 2 adjustments during a run that processed 10 million states.
+
+### Multiple State objects
+The last thing we need to support multi-threading is clone the "full state" objects, because each thread will mutate its copy. The `State` class got a copy constructor so we can clone the starting and all the end states for each thread.

@@ -3,399 +3,430 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using System.Linq;
+using System.Threading;
+using soko.Collections;
 
-namespace soko
+namespace soko;
+
+// using StateTable = Dictionary<ulong, HashState>;
+using StateTable = CompactHashTable<HashState>;
+using StateTableBack = CompactHashTable<HashState>;
+
+using StatesToProcess = ConcurrentBucketedPriorityQueue<ToProcess>;
+using StatesToProcessBck = ConcurrentBucketedPriorityQueue<ToProcessBck>;
+// using StatesToProcess = PriorityQueue<ToProcess, int>;
+// using StatesToProcessBck = PriorityQueue<ToProcessBck, int>;
+
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct HashState {
+    public ulong zHash;
+    public Move move;
+    // converts a (ulong, Move) tuple to HashState
+    public static implicit operator HashState((ulong z, Move m) tuple) => new HashState { zHash = tuple.z, move = tuple.m };
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 4)]
+public struct ToProcess
 {
-    // using StateTable = Dictionary<ulong, HashState>;
-    using StateTable = CompactHashTable<HashState>;
-    using StateTableBack = CompactHashTable<HashState>;
+    public ulong state;
+    // public int moveIdx;
+    public int distance;
+}
+[StructLayout(LayoutKind.Sequential, Pack = 4)]
+public struct ToProcessBck
+{
+    public ulong state;
+    // public int moveIdx;
+    public int distance;
+    public byte bckStateIdx;
+}
 
-    // using StatesToProcess = PriorityQueue<ToProcess>;
-    // using StatesToProcessBck = PriorityQueue<ToProcessBck>;
-    using StatesToProcess = PriorityQueue<ToProcess, int>;
-    using StatesToProcessBck = PriorityQueue<ToProcessBck, int>;
+class SolutionIndicator
+{
+    public ulong commonState = 0;
+}
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct HashState {
-        public ulong zHash;
-        public Move move;
-        // converts a (ulong, Move) tuple to HashState
-        public static implicit operator HashState((ulong z, Move m) tuple) => new HashState { zHash = tuple.z, move = tuple.m };
-    }
+public partial class Solver(Level level)
+{
 
-    public struct ToProcess 
+    private SolutionIndicator solutionIndicator;
+    private ulong startStateZ;
+    private List<ulong> endStateZs;
+
+    private State fwdState;
+    private List<State> bckStates;
+
+    public StateTable forwardVisitedStates;
+    public StateTableBack backwardVisitedStates;
+
+
+    public StatesToProcess statesToProcess;
+    public StatesToProcessBck statesToProcessBck;
+
+    public static readonly int NumSolverThreadsPerSide = 3;  //(Environment.ProcessorCount-2) / 2;
+
+    public Task Solve()
     {
-        public ulong state;
-        public int moveIdx;
-    }
-    public struct ToProcessBck
-    {
-        public ulong state;
-        public int moveIdx;
-        public byte bckStateIdx;
-    }
+        solutionIndicator = new SolutionIndicator();
 
-    public class Solver
-    {
-        private Level level;
-        private /* volatile */ ulong commonState = 0;
-        private ulong startStateZ;
-        private List<ulong> endStateZs;
+        forwardVisitedStates = new StateTable(8 << 20);    // 16M slots
+        backwardVisitedStates = new StateTableBack(8 << 20);
 
-        private State fwdState;
-        private List<State> bckStates;
+        statesToProcess = new StatesToProcess();
+        statesToProcessBck = new StatesToProcessBck();
 
-        public StateTable forwardVisitedStates;
-        public StateTableBack backwardVisitedStates;
+        var fwdSolvers = new ForwardSolverThread[NumSolverThreadsPerSide];
+        var bckSolvers = new BackwardSolverThread[NumSolverThreadsPerSide];
 
-        public MoveRanges movesFwd = new(1000);
-        public MoveRanges movesBck = new(1000);
+        // prepare fwd states
+        var state = new State(level, level.boxPositions, level.playerPosition);
 
-        public StatesToProcess statesToProcess;
-        public StatesToProcessBck statesToProcessBck;
+        startStateZ = state.GetZHash();
+        forwardVisitedStates.TryAdd(startStateZ, new HashState());  // parent of the root is "null" (zeros)
 
-        DynamicList<HashState> sourceAncestors1;
-        DynamicList<HashState> targetAncestors1;
-        
-        DynamicList<HashState> sourceAncestors2;
-        DynamicList<HashState> targetAncestors2;
+        fwdState = state;
+        int pushDistance = fwdState.GetHeuristicPushDistance();
 
-        public Solver(Level level)
+        if (pushDistance >= HeuristicDistances.Unreachable)
         {
-            this.level = level;
+            throw new InvalidOperationException($"Could not find a suitable box-goal pairing from start position, pushDistance={pushDistance}");
         }
 
-        public Task Solve()
+        statesToProcess.Enqueue(new ToProcess
         {
-            sourceAncestors1 = new DynamicList<HashState>(100);
-            targetAncestors1 = new DynamicList<HashState>(100);
+            state = startStateZ,
+            // moveIdx = fwdState.InsertPossiblePushMovesInto(movesFwd, (0, 0)), // cameFrom.IsBoxOtherSideReachable == false
+            distance = 0
+        }, pushDistance);
 
-            sourceAncestors2 = new DynamicList<HashState>(100);
-            targetAncestors2 = new DynamicList<HashState>(100);
 
-            forwardVisitedStates = new StateTable(1<<17);
-            backwardVisitedStates = new StateTableBack(1<<17);
+        for (int i = 0; i < NumSolverThreadsPerSide; i++)
+            fwdSolvers[i] = new ForwardSolverThread(new State(fwdState), statesToProcess, forwardVisitedStates, backwardVisitedStates, solutionIndicator);
 
-            statesToProcess = new StatesToProcess();
-            statesToProcessBck = new StatesToProcessBck();
+        // prepare bck states
+        endStateZs = [];
+        bckStates = [];
 
-            // prepare fwd states
-            var state = new State(level, level.boxPositions, level.playerPosition);
-            
-            startStateZ = state.GetZHash();
-            forwardVisitedStates.TryAdd(startStateZ, new HashState());  // parent of the root is "null" (zeros)
+        var endPlayerPositions = GenerateEndPlayerPositions();
+        foreach (var endPlayerPos in endPlayerPositions)
+        {
+            var endState = new State(level, level.goalPositions, endPlayerPos);
+            var endStateZ = endState.GetZHash();
 
-            fwdState = state;
-            int pushDistance = fwdState.GetHeuristicPushDistance();
+            backwardVisitedStates.TryAdd(endStateZ, new HashState());
+            // forwardVisitedStates.TryAdd(endStateZ, (0, new Move { BackwardStateBit = true }), out var _);
 
-            if (pushDistance >= HeuristicDistances.Unreachable) {
-                throw new InvalidOperationException($"Could not find a suitable box-goal pairing from start position, pushDistance={pushDistance}");
+            int pullDistance = endState.GetHeuristicPullDistance();
+
+            if (pullDistance >= HeuristicDistances.Unreachable)
+            {
+                throw new InvalidOperationException($"Could not find a suitable box-goal pairing from end position, pullDistance={pullDistance}");
             }
 
-            statesToProcess.Enqueue(new ToProcess
+            statesToProcessBck.Enqueue(new ToProcessBck
             {
-                state = startStateZ,
-                moveIdx = fwdState.GetPossiblePushMoves(movesFwd, (0, 0)), // cameFrom.IsBoxOtherSideReachable == false
-            }, pushDistance);
+                bckStateIdx = (byte)bckStates.Count,
+                state = endStateZ,
+                // moveIdx = endState.GetPossiblePullMoves(movesBck, (0, 0)), // cameFrom.IsBoxOtherSideReachable == false
+                distance = 0
+            }, pullDistance);
+            endStateZs.Add(endStateZ);
+            bckStates.Add(endState);
+        }
 
-            // prepare bck states
-            endStateZs = [];
-            bckStates = [];
-            
-            var endPlayerPositions = GenerateEndPlayerPositions();
-            foreach (var endPlayerPos in endPlayerPositions)
+        for (int i = 0; i < NumSolverThreadsPerSide; i++)
+            bckSolvers[i] = new BackwardSolverThread([.. bckStates.Select(s => new State(s))], statesToProcessBck, forwardVisitedStates, backwardVisitedStates, solutionIndicator);
+
+        return Task.WhenAll([
+            .. fwdSolvers.Select(solver => Task.Run(() => { while (solutionIndicator.commonState == 0) solver.SolveForwardOneStep(); })),
+            .. bckSolvers.Select(solver => Task.Run(() => { while (solutionIndicator.commonState == 0) solver.SolveReverseOneStep(); })),
+        ]);
+    }
+
+
+
+    // general case: source=6, target=2
+    //     5
+    //    / \
+    //   3   6(s)
+    //  /
+    // 2(t)
+    // sourceAncestors: [6, 5], targetAncestors: [2, 3, 5]
+    // we exclude the common state (5) from both
+    // 
+    private static Move? MoveStateInto(State state, ulong targetZhash, StateTable visitedStates, bool backward, DynamicList<HashState> sourceAncestors, DynamicList<HashState> targetAncestors)
+    {
+        var sourceZHash = state.GetZHash();
+        if (sourceZHash == targetZhash) return null;
+
+        sourceAncestors.Clear();
+        targetAncestors.Clear();
+
+        var sourceState = visitedStates[sourceZHash];
+        sourceAncestors.Add((sourceZHash, sourceState.move));
+        var targetState = visitedStates[targetZhash];
+        targetAncestors.Add((targetZhash, targetState.move));
+
+        while (true)
+        {
+            var sourcePrevZ = sourceState.zHash;
+            if (sourcePrevZ != 0)
             {
-                var endState = new State(level, level.goalPositions, endPlayerPos);
-                var endStateZ = endState.GetZHash();
-                backwardVisitedStates.TryAdd(endStateZ, new HashState());
-                int pullDistance = endState.GetHeuristicPullDistance();
-
-                if (pullDistance >= HeuristicDistances.Unreachable) {
-                    throw new InvalidOperationException($"Could not find a suitable box-goal pairing from end position, pullDistance={pullDistance}");
-                }
-
-                statesToProcessBck.Enqueue(new ToProcessBck
+                var srcInTarget = targetAncestors.FindZhash(sourcePrevZ);
+                if (srcInTarget >= 0)
                 {
-                    bckStateIdx = (byte)bckStates.Count,
-                    state = endStateZ,
-                    moveIdx = endState.GetPossiblePullMoves(movesBck, (0, 0)), // cameFrom.IsBoxOtherSideReachable == false
-                }, pullDistance);
-                endStateZs.Add(endStateZ);
-                bckStates.Add(endState);
+                    // ignore items in targetAncestors after sourceState
+                    targetAncestors.Truncate(srcInTarget);
+                    break;
+                }
+                sourceState = visitedStates[sourcePrevZ];
+                sourceAncestors.Add((sourcePrevZ, sourceState.move));
             }
 
-
-            // return Task.Run(() => {
-            //     ToProcess fwdElem;
-            //     ToProcessBck bckElem;
-            //     int fwdPrio, bckPrio;
-            //     while (commonState == 0 && statesToProcess.TryPeek(out fwdElem, out fwdPrio) && statesToProcessBck.TryPeek(out bckElem, out bckPrio)) {
-            //         if (fwdPrio < bckPrio) 
-            //             SolveForwardOneStep();
-            //         else 
-            //             SolveReverseOneStep();
-            //     }
-                
-            // });
-
-            return Task.WhenAny([
-                // !!! HeuristicDistance re-uses private BitArrays, won't work with 2 threads!!!
-                Task.Run(() => { while (commonState == 0) SolveForwardOneStep(); }),
-                Task.Run(() => { while (commonState == 0) SolveReverseOneStep(); }),
-            ]);
+            var targetPrevZ = targetState.zHash;
+            if (targetPrevZ != 0)
+            {
+                var targetInSrc = sourceAncestors.FindZhash(targetPrevZ);
+                if (targetInSrc >= 0)
+                {
+                    // ignore items in sourceAncestors after targetState
+                    sourceAncestors.Truncate(targetInSrc);
+                    break;
+                }
+                targetState = visitedStates[targetPrevZ];
+                targetAncestors.Add((targetPrevZ, targetState.move));
+            }
         }
 
-
-
-        private void SolveForwardOneStep()
+        // walk up the tree from the source to the common ancestor node
+        for (var i = 0; i < sourceAncestors.Count; i++)
         {
-            if (statesToProcess.Count > 0) {
+            state.ApplyMove(sourceAncestors.items[i].move, !backward);
+        }
+
+        for (var i = targetAncestors.Count - 1; i >= 0; i--)
+        {
+            state.ApplyMove(targetAncestors.items[i].move, backward);
+        }
+
+        // last move
+        return targetAncestors.Count > 0 ? targetAncestors.items[0].move : null;
+    }
+
+
+
+    /** returns minimum indexes for each player-reachable area */
+    private int[] GenerateEndPlayerPositions()
+    {
+        var table = new int[level.table.Length];
+        for (var i = 0; i < table.Length; i++)
+        {
+            // at the end state, all boxes are on goal positions
+            table[i] = level.table[i].has(Cell.Wall | Cell.Goal) ? 1 : 0;
+        }
+
+        var playerPositions = new List<int>();
+
+        for (var i = 0; i < table.Length; i++)
+        {
+            if (table[i] == 0)
+            {
+                playerPositions.Add(i);
+                Filler.FillBoundsCheck(table, level.width, i, value => value == 0, 1);
+            }
+        }
+
+        return [..playerPositions];
+    }
+
+    public void PrintSolution()
+    {
+        if (solutionIndicator.commonState == 0) return;
+
+        var forwardSteps = new List<HashState>();
+        var state = solutionIndicator.commonState;
+
+        while (state != startStateZ)
+        {
+            var fromState = forwardVisitedStates[state];
+            forwardSteps.Add(fromState);
+            state = fromState.zHash;
+        }
+
+        var backwardSteps = new List<HashState>();
+        state = solutionIndicator.commonState;
+
+        while (!endStateZs.Contains(state))
+        {
+            var fromState = /*forwardVisitedStates[state]; */ backwardVisitedStates[state];
+            backwardSteps.Add(fromState);
+            state = fromState.zHash;
+        }
+
+        var endIdx = endStateZs.IndexOf(state);
+        var bckState = bckStates[endIdx];
+
+        var sb = new StringBuilder();
+        var playerPos = WriteSolutionMoves(sb, forwardSteps);
+        WriteReversedSolutionMoves(sb, backwardSteps, playerPos, bckState);
+        string solution = sb.ToString();
+
+
+        int pushCount = forwardSteps.Count + backwardSteps.Count;
+        Console.WriteLine($"{pushCount} (F/B:{forwardSteps.Count}/{backwardSteps.Count}) pushes, {solution.Length - pushCount} moves, " +
+            $"deadlockrate: {fwdState.reachable._pulldeadlockCnt}/{fwdState.reachable._pullmoveCnt}" +
+            $":{bckState.reachable._pulldeadlockCnt}/{bckState.reachable._pullmoveCnt}"
+        );
+
+        Console.WriteLine(solution);
+
+    }
+
+    private int WriteSolutionMoves(StringBuilder sb, List<HashState> steps)
+    {
+        steps.Reverse();
+        var playerPos = level.playerPosition;
+
+        MoveStateInto(fwdState, startStateZ, forwardVisitedStates, false, new (100), new (100));
+
+        foreach (var step in steps)
+        {
+            sb.Append(fwdState.FindPlayerPath(playerPos, step.move));
+            sb.Append(Move.PushCodeForDirection[step.move.Direction]);
+            fwdState.ApplyPushMove(step.move);
+            playerPos = fwdState.reachable.playerPosition;
+        }
+
+        return playerPos;
+    }
+
+    private void WriteReversedSolutionMoves(StringBuilder sb, List<HashState> steps, int playerPos, State bckState)
+    {
+        // this shouldn't be necessary, the state is already in the commonState
+        MoveStateInto(bckState, solutionIndicator.commonState, backwardVisitedStates /*forwardVisitedStates*/, true, new (100), new (100));
+
+        foreach (var step in steps)
+        {
+            sb.Append(bckState.FindPlayerPath(playerPos, step.move));
+            sb.Append(Move.PushCodeForDirection[step.move.Direction]);
+            bckState.ApplyPushMove(step.move);
+            playerPos = step.move.BoxPos;
+        }
+    }
+
+
+    /* */
+
+
+    class ForwardSolverThread(State fwdState, StatesToProcess statesToProcess, StateTable forwardVisitedStates, StateTableBack backwardVisitedStates, SolutionIndicator solution)
+    {
+
+        readonly DynamicList<HashState> sourceAncestors = new(100);
+        readonly DynamicList<HashState> targetAncestors = new(100);
+
+        public Move MoveStateInto2(State state, ulong targetZHash)
+        {
+            return MoveStateInto(state, targetZHash, forwardVisitedStates, false, sourceAncestors, targetAncestors) ?? (0, 0);
+        }
+        public void SolveForwardOneStep()
+        {
+            if (statesToProcess.Count > 0)
+            {
                 var toProcess = statesToProcess.Dequeue();
-                // var pushes = toProcess.pushes + 1;
+                var pushes = toProcess.distance + 1;
                 ulong stateZHash = toProcess.state;
 
-                MoveStateInto(fwdState, stateZHash, forwardVisitedStates, false, sourceAncestors1, targetAncestors1);
+                if (stateZHash == 0) return;
+
+                var lastMove = MoveStateInto2(fwdState, stateZHash);
 
                 // Console.WriteLine("Processing state...");
                 // fullState.PrintTable();
 
-                var mIdx = toProcess.moveIdx;
-                Move move;
-                do
+                foreach (Move move in fwdState.GetPossiblePushMoves(lastMove).ToArray())
                 {
-                    move = movesFwd.items[mIdx++];
-
-                    if (fwdState.ApplyPushMove(move)) {
+                    if (fwdState.ApplyPushMove(move))
+                    {
                         var newZHash = fwdState.GetZHash();
 
-                        if (forwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
-                            if (backwardVisitedStates.ContainsKey(newZHash)) {
-                                commonState = newZHash;
+                        if (forwardVisitedStates.TryAdd(newZHash, (stateZHash, move)))
+                        {
+                            if (backwardVisitedStates.ContainsKey(newZHash))
+                            {
+                                Interlocked.CompareExchange(ref solution.commonState, newZHash, 0);
                                 return;
                             }
-                            var moveIdx2 = fwdState.GetPossiblePushMoves(movesFwd, move);
-                            if (moveIdx2 >= 0) {
-                                int pushDistance = fwdState.GetHeuristicPushDistance();
-                                if (pushDistance < HeuristicDistances.Unreachable) {
-                                    statesToProcess.Enqueue(
-                                        new ToProcess { state = newZHash, moveIdx = moveIdx2 },
-                                        pushDistance
-                                    );
-                                }
+
+                            int pushDistance = fwdState.GetHeuristicPushDistance();
+                            if (pushDistance < HeuristicDistances.Unreachable)
+                            {
+                                statesToProcess.Enqueue(
+                                    new ToProcess { state = newZHash, distance = pushes },
+                                    pushDistance + pushes
+                                );
                             }
                         }
+                        // revert the move
                         fwdState.ApplyMove(move, pull: true);
                     }
-                    
-                } while (!move.IsLast);
-                movesFwd.RemoveRange(toProcess.moveIdx, mIdx);
-            }
-        }
-
-
-        // general case: source=6, target=2
-        //     5
-        //    / \
-        //   3   6(s)
-        //  /
-        // 2(t)
-        // sourceAncestors: [6, 5], targetAncestors: [2, 3, 5]
-        // we exclude the common state (5) from both
-        // 
-        private void MoveStateInto(State state, ulong targetZhash, StateTable visitedStates, bool backward, DynamicList<HashState> sourceAncestors, DynamicList<HashState> targetAncestors)
-        {
-            var sourceZHash = state.GetZHash();
-            if (sourceZHash == targetZhash) return;
-
-            sourceAncestors.Clear();
-            targetAncestors.Clear();
-
-            var sourceState = visitedStates[sourceZHash];
-            sourceAncestors.Add((sourceZHash, sourceState.move));
-            var targetState = visitedStates[targetZhash];
-            targetAncestors.Add((targetZhash, targetState.move));
-
-            while (true) {
-                var sourcePrevZ = sourceState.zHash; 
-                if (sourcePrevZ != 0) {
-                    var srcInTarget = targetAncestors.FindZhash(sourcePrevZ);
-                    if (srcInTarget >= 0) {
-                        // ignore items in targetAncestors after sourceState
-                        targetAncestors.Truncate(srcInTarget);
-                        break;
-                    }
-                    sourceState = visitedStates[sourcePrevZ];
-                    sourceAncestors.Add((sourcePrevZ, sourceState.move));
-                }
-
-                var targetPrevZ = targetState.zHash;
-                if (targetPrevZ != 0) {
-                    var targetInSrc = sourceAncestors.FindZhash(targetPrevZ);
-                    if (targetInSrc >= 0) {
-                        // ignore items in sourceAncestors after targetState
-                        sourceAncestors.Truncate(targetInSrc);
-                        break;
-                    }
-                    targetState = visitedStates[targetPrevZ];
-                    targetAncestors.Add((targetPrevZ, targetState.move));
                 }
             }
-            
-            // walk up the tree from the source to the common ancestor node
-            for (var i = 0; i < sourceAncestors.Count; i++) {
-                state.ApplyMove(sourceAncestors.items[i].move, !backward);
-            }
-
-            for (var i = targetAncestors.Count - 1; i >= 0; i--) {
-                state.ApplyMove(targetAncestors.items[i].move, backward);
-            }
         }
+    }
 
-        private void SolveReverseOneStep()
+    class BackwardSolverThread(State[] bckStates, StatesToProcessBck statesToProcessBck, StateTable forwardVisitedStates, StateTableBack backwardVisitedStates, SolutionIndicator solution)
+    {
+        readonly DynamicList<HashState> sourceAncestors = new(100);
+        readonly DynamicList<HashState> targetAncestors = new(100);
+
+        public Move MoveStateInto2(State state, ulong targetZHash)
         {
-            if (statesToProcessBck.Count > 0) {
+            return MoveStateInto(state, targetZHash, backwardVisitedStates, true, sourceAncestors, targetAncestors) ?? (0, 0);
+        }
+        public void SolveReverseOneStep()
+        {
+            if (statesToProcessBck.Count > 0)
+            {
                 var toProcess = statesToProcessBck.Dequeue();
-                // var pushes = toProcess.pushes + 1;
+                var pulls = toProcess.distance + 1;
                 ulong stateZHash = toProcess.state;
 
+                if (stateZHash == 0) return;
+
                 var bckState = bckStates[toProcess.bckStateIdx];
+                var lastMove = MoveStateInto2(bckState, stateZHash);
 
-                MoveStateInto(bckState, stateZHash, backwardVisitedStates, true, sourceAncestors2, targetAncestors2);
-
-                //bckState.StorePrevReachable();
-                
-                // Console.WriteLine("Processing state...");
-                // fullState.PrintTable();
-
-                var mIdx = toProcess.moveIdx;
-                Move move;
-                do
+                foreach (Move m in bckState.GetPossiblePullMoves(lastMove).ToArray())
                 {
-                    move = movesBck.items[mIdx++];
-                    if (bckState.ApplyPullMove(move)) {
+                    var move = m;
+                    if (bckState.ApplyPullMove(move))
+                    {
                         var newZHash = bckState.GetZHash();
 
-                        if (backwardVisitedStates.TryAdd(newZHash, (stateZHash, move))) {
-                            if (forwardVisitedStates.ContainsKey(newZHash)) {
-                                commonState = newZHash;
+                        move.BackwardStateBit = true;
+                        if (backwardVisitedStates.TryAdd(newZHash, (stateZHash, move)))
+                        {
+                            if (forwardVisitedStates.ContainsKey(newZHash))
+                            {
+                                Interlocked.CompareExchange(ref solution.commonState, newZHash, 0);
                                 return;
                             }
-                            var moveIdx2 = bckState.GetPossiblePullMoves(movesBck, move);
-                            if (moveIdx2 >= 0) {
-                                int pullDistance = bckState.GetHeuristicPullDistance();
-                                if (pullDistance < HeuristicDistances.Unreachable) {
-                                    statesToProcessBck.Enqueue(
-                                        new ToProcessBck { state = newZHash, moveIdx = moveIdx2, bckStateIdx = toProcess.bckStateIdx },
-                                        pullDistance
-                                    );
-                                }
+                            int pullDistance = bckState.GetHeuristicPullDistance();
+                            if (pullDistance < HeuristicDistances.Unreachable)
+                            {
+                                statesToProcessBck.Enqueue(
+                                    new ToProcessBck { state = newZHash, bckStateIdx = toProcess.bckStateIdx, distance = pulls },
+                                    pullDistance + pulls
+                                );
                             }
                         }
                         bckState.ApplyMove(move, pull: false);
                     }
-                    
-                } while (!move.IsLast);
-                movesBck.RemoveRange(toProcess.moveIdx, mIdx);
-            }
-        }
-
-        /** returns minimum indexes for each player-reachable area */
-        private int[] GenerateEndPlayerPositions()
-        {
-            var table = new int[level.table.Length];
-            for (var i = 0; i < table.Length; i++)
-            {
-                // at the end state, all boxes are on goal positions
-                table[i] = level.table[i].has(Cell.Wall | Cell.Goal) ? 1 : 0;
-            }
-            
-            var playerPositions = new List<int>();
-
-            for (var i = 0; i < table.Length; i++)
-            {
-                if (table[i] == 0) {
-                    playerPositions.Add(i);
-                    Filler.FillBoundsCheck(table, level.width, i, value => value == 0, 1);
                 }
             }
-
-            return [.. playerPositions];
         }
-
-        public void PrintSolution()
-        {
-            if (commonState == 0) return;
-
-            var forwardSteps = new List<HashState>();
-            var state = commonState;
-
-            while (state != startStateZ)
-            {
-                var fromState = forwardVisitedStates[state];
-                forwardSteps.Add(fromState);
-                state = fromState.zHash;
-            }
-
-            var backwardSteps = new List<HashState>();
-            state = commonState;
-
-            while (!endStateZs.Contains(state))
-            {
-                var fromState = backwardVisitedStates[state];
-                backwardSteps.Add(fromState);
-                state = fromState.zHash;
-            }
-
-            var endIdx = endStateZs.IndexOf(state);
-            var bckState = bckStates[endIdx];
-
-            var sb = new StringBuilder();
-            var playerPos = WriteSolutionMoves(sb, forwardSteps);
-            WriteReversedSolutionMoves(sb, backwardSteps, playerPos, bckState);
-            string solution = sb.ToString();
-
-
-            int pushCount = forwardSteps.Count + backwardSteps.Count;
-            Console.WriteLine($"{pushCount} ({forwardSteps.Count}/{backwardSteps.Count}) pushes, {solution.Length - pushCount} moves, " +
-                $"deadlockrate: {fwdState.reachable._pulldeadlockCnt}/{fwdState.reachable._pullmoveCnt}" +
-                $":{bckState.reachable._pulldeadlockCnt}/{bckState.reachable._pullmoveCnt}"
-                );
-
-            Console.WriteLine(solution);
-
-        }
-
-        private int WriteSolutionMoves(StringBuilder sb, List<HashState> steps) 
-        {
-            steps.Reverse();
-            var playerPos = level.playerPosition;
-
-            MoveStateInto(fwdState, startStateZ, forwardVisitedStates, false, sourceAncestors1, targetAncestors1);
-
-            foreach (var step in steps)
-            {
-                sb.Append(fwdState.FindPlayerPath(playerPos, step.move));
-                sb.Append(Move.PushCodeForDirection[step.move.Direction]);
-                fwdState.ApplyPushMove(step.move);
-                playerPos = fwdState.reachable.playerPosition;
-            }
-
-            return playerPos;
-        }
-
-        private void WriteReversedSolutionMoves(StringBuilder sb, List<HashState> steps, int playerPos, State bckState) 
-        {
-            // this shouldn't be necessary, the state is already in the commonState
-            MoveStateInto(bckState, commonState, backwardVisitedStates, true, sourceAncestors2, targetAncestors2);
-
-            foreach (var step in steps)
-            {
-                sb.Append(bckState.FindPlayerPath(playerPos, step.move));
-                sb.Append(Move.PushCodeForDirection[step.move.Direction]);
-                bckState.ApplyPushMove(step.move);
-                playerPos = step.move.BoxPos;
-            }
-        }
-
     }
-}
+
+}       /// Solver
+
