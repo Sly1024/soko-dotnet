@@ -366,3 +366,40 @@ OK, but we need to get to that state eventually, right? My dirty hack is to run 
 
 ### Multiple State objects
 The last thing we need to support multi-threading is clone the "full state" objects, because each thread will mutate its copy. The `State` class got a copy constructor so we can clone the starting and all the end states for each thread.
+
+
+
+## Phase 8 - Goal room packing
+
+### Simple case: one goal room
+
+* find a single "choke point" 
+  *  a cell that when blocked, it cuts off all goal positions from all initial_box_positions (unreachable)
+  * closest to the goal room: smallest goal room area
+  * should not be on a goal position!
+* find a "solution" to goal room packing using A* algorithm:
+  * cut off the goal room: put (imaginary) walls around the player position which is just behind the choke point
+```
+Goal room of original level 1
+   ###### 
+####  ..#  @ - player
+  W@C ..#  C - choke point
+# ##  ..#  W - added wall
+#########    
+```
+* _
+  * special GetPossibleMoves(): Spawning a box at the choke point can be a possible move if 
+    * the choke point and the cell ahead of it (relative to the player) are empty
+    * there are less than `numBoxes` boxes in the goalroom
+  * GetHeuristicDistance(): simpler than before - just add up the distances of each box to a goalposition, if the box is not spawned yet, then use the choke point as its location
+  * mark the move (step) that spawns a box with a special flag 
+
+* find a solution to the "main" part with A* algo:
+  * Each box now has to land on the choke point: GetHeuristicDistance() is simpler, add up the distances of each "existing" box to the choke point
+  * Once a box is pushed into the choke point, it is despawned - removed from the playing field, and we mark this step with a "despawn" flag
+* finally we combine the two solutions:
+  * (first box moves to choke point)(from choke point to final goal)(second box moves to choke point)(...)
+
+### Multiple goal rooms
+* similar to the simple case, but solve each goal room separately
+* the "main" solve will have multiple choke points (sinks) and those will act as goal positions where we need to push boxes, but they have a capacity now.
