@@ -106,7 +106,7 @@ class Program
         var elapsed = watch.Elapsed.TotalSeconds;
         // Console.Write("\r {0:h\\:mm\\:ss\\.f} Mem/Accu: {1} / {2} MB, GC: {3}/{4}/{5} AStates: {6}|{7} - Visited: {8}|{9} - ARates: {10}|{11} - VRates: {12}|{13}                     ", /* BranchF: {6:0.00} */
 
-        Console.Write("\r {0:h\\:mm\\:ss\\.f} Mem/Accu: {1} / {2} MB, GC: {3}/{4}/{5} Active: {6}|{7} ({10}|{11}/s) - Visited: {8}|{9} ({12}|{13}/s)  LP: {14}|{15}   AvgProbe: {16}|{17}                ", /* BranchF: {6:0.00} */
+        Console.Write("\r {0:h\\:mm\\:ss\\.f} Mem: {1} MB, GC: {3}/{4}/{5} Active: {6}|{7} ({10}|{11}/s) - Visited: {8}|{9} ({12}|{13}/s) LP: {14}|{15} AvgProbe: {16}|{17} MaxPrio: {18}|{19}                ", /* BranchF: {6:0.00} */
             watch.Elapsed,
             Process.GetCurrentProcess().WorkingSet64 >> 20,
             GC.GetTotalAllocatedBytes() >> 20,
@@ -126,7 +126,9 @@ class Program
             solver.statesToProcess.lpd_counter,
             solver.statesToProcessBck.lpd_counter,
             Num((double)solver.forwardVisitedStates._probe_count / solver.forwardVisitedStates._findKeyOrEmpty_count),
-            Num((double)solver.backwardVisitedStates._probe_count / solver.backwardVisitedStates._findKeyOrEmpty_count)
+            Num((double)solver.backwardVisitedStates._probe_count / solver.backwardVisitedStates._findKeyOrEmpty_count),
+            solver.statesToProcess.buckets.Count,
+            solver.statesToProcessBck.buckets.Count
         // solver.movesBck.Count, solver.movesBck.items.Length, 
 
         // solver.statesToProcessBck.GetTop3Count()

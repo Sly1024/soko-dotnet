@@ -91,7 +91,7 @@ public class State
 
                     if (!reachable.Blocked(boxPos + offset) && !level.pushDeadCells[boxPos + offset])
                     {
-                        yield return (boxPos, dir, otherSideReachable: reachable[boxPos + offset]);
+                        yield return (boxPos, dir, otherSideReachable: reachable[boxPos + offset], isSameBoxAsBefore: boxPos == cameFrom.BoxPos + cameFromOffset);
                     }
                 }
             }
@@ -137,7 +137,7 @@ public class State
                     }
                     if (!reachable.Blocked(boxPos - 2 * offset) && !level.pullDeadCells[boxPos - offset])
                     {
-                        yield return (boxPos - offset, dir, otherSideReachable: reachable[boxPos + offset]);
+                        yield return (boxPos - offset, dir, otherSideReachable: reachable[boxPos + offset], isSameBoxAsBefore: boxPos == cameFrom.BoxPos);
                     }
                 }
             }

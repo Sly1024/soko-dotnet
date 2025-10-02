@@ -64,7 +64,11 @@ public partial class Solver(Level level)
     public StatesToProcess statesToProcess;
     public StatesToProcessBck statesToProcessBck;
 
-    public static readonly int NumSolverThreadsPerSide = 3;  //(Environment.ProcessorCount-2) / 2;
+    public static readonly int NumSolverThreadsPerSide = 1;  //(Environment.ProcessorCount-2) / 2;
+
+    // add this number to the already made steps if the box we're moving is not the same as the previous step
+    // in order to guide the A* to pick states that move the same box 
+    public static readonly int PunishNotSameBox = 2;
 
     public Task Solve()
     {
@@ -211,7 +215,8 @@ public partial class Solver(Level level)
         }
 
         // last move
-        return targetAncestors.Count > 0 ? targetAncestors.items[0].move : null;
+        return targetAncestors.Count > 0 ? targetAncestors.items[0].move :
+                sourceAncestors.Count > 0 ? sourceAncestors.items[sourceAncestors.Count-1].move : null;
     }
 
 
@@ -362,8 +367,8 @@ public partial class Solver(Level level)
                             if (pushDistance < HeuristicDistances.Unreachable)
                             {
                                 statesToProcess.Enqueue(
-                                    new ToProcess { state = newZHash, distance = pushes },
-                                    pushDistance + pushes
+                                    new ToProcess { state = newZHash, distance = pushes + (move.IsSameBoxAsBefore ? 0 : PunishNotSameBox) },
+                                    pushDistance*2 + pushes + (move.IsSameBoxAsBefore ? 0 : PunishNotSameBox)
                                 );
                             }
                         }
@@ -404,7 +409,7 @@ public partial class Solver(Level level)
                     {
                         var newZHash = bckState.GetZHash();
 
-                        move.BackwardStateBit = true;
+                        // move.BackwardStateBit = true;
                         if (backwardVisitedStates.TryAdd(newZHash, (stateZHash, move)))
                         {
                             if (forwardVisitedStates.ContainsKey(newZHash))
@@ -416,8 +421,8 @@ public partial class Solver(Level level)
                             if (pullDistance < HeuristicDistances.Unreachable)
                             {
                                 statesToProcessBck.Enqueue(
-                                    new ToProcessBck { state = newZHash, bckStateIdx = toProcess.bckStateIdx, distance = pulls },
-                                    pullDistance + pulls
+                                    new ToProcessBck { state = newZHash, bckStateIdx = toProcess.bckStateIdx, distance = pulls + (move.IsSameBoxAsBefore ? 0 : PunishNotSameBox) },
+                                    pullDistance*2 + pulls + (move.IsSameBoxAsBefore ? 0 : PunishNotSameBox)
                                 );
                             }
                         }

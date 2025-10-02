@@ -65,7 +65,7 @@ public class HeuristicDistanceComputer
                 else
                 {
                     // punish by 2x if not reachable
-                    distArr.Add((boxIdx, goalIdx, distances[goalIdx] * 2));
+                    distArr.Add((boxIdx, goalIdx, distances[goalIdx]));
                 }
             }
             numBoxesAdded++;

@@ -134,3 +134,28 @@ move: 2, hashstate: 10, ptr: 8, ToProc: 12|16 threads: 2x3
  0:00:40.1 Mem/Accu: 2583 / 6668 MB, GC: 451/9/5 Active:    8.7M|  14.8M ( 483.1K| 436.9K/s) - Visited:   15.6M|  20.4M ( 627.9K| 536.9K/s)  LP: 1|0                    
 Time: 00:00:40.1373072
 154 (F/B:77/77) pushes, 920 moves, deadlockrate: 0/77:0/77
+
+./bin/Release/net9.0/soko ./levels/orig_2.sok 
+Dead: 24 Free: 46
+move: 2, hashstate: 10, ptr: 8, ToProc: 12|16 threads: 2x3
+ 0:00:00.7 Mem/Accu: 353 / 428 MB, GC: 18/4/2 Active:   97.7K| 298.6K ( 157.0K| 486.5K/s) - Visited:  375.3K| 594.1K ( 748.1K|   1.1M/s)  LP: 0|1   AvgProbe:     1.0|    1.0                
+Time: 00:00:00.7482970
+273 (F/B:8/265) pushes, 1206 moves, deadlockrate: 0/8:0/265
+ldddldlluRdrruuuurrdrRdddrruuLUUruulLrrddldlllulldddLruuurrdrrruruullulllldDuurrrrdrrddldlllulLrrdrrrdrddlluUruuruulDDDuuululldRlulldddLLrrdddldlluRRdrUUUUrrdrRdddlluLLLruuulldlluRRRRdddrrdrruuulluLrdrrddLLrruulDrddrruuLLrUUruulDDDlllulLLLdlluRdrUrrrrdrrruuuLulllldDuurrdLulDrrurrdLLrrrdddldddlluRdrUdrruLUddlluRdrruulUllDRddlUruullulLLLdlluRRRRdddRRdrruuurUdldddrruuLuuruulDDDllluLLdddrrdrruUddllulluuuLLrrrrdrRllulldddldlluRRdrUrrdrruLLrruulDrddrruuLLrUUruulDDDldddlluLLLrUdrrdrruuullulllldlUrrrrrdrrdddllulluUddrrdrruuullulLLLdlluRRRRdddldlluRRdrUrrdrruLLrruulDrddrruuLLddlluLLLrrrdrruuulluLLLLLrrrrrdrrdddllullUUddrrdrruuullulLLLdllluururrDulldRllddrrURldlluururDllddrrruRRdddrrdrruuruuuulllulldDDDulldllUUluRdddrUrrruuurrdLulDrrrrrdddllluLLLLrrrrdrrdddllullUdrrdrruuullullllLrrrrrdrrdddllulluUddrrdrruuullulLLLdllluuruurrdDuullddRllddrrURRRdddldlluRRdrUrrdrruLLrruulDrddlluLLLrrrdrruululuLLLLdllluuruurrdDuulllddddrUUddrrULrrrrrdrrdddllullUUddrrdrruulululLLLdllluuuurrrdDLDRRluuulDulldRurrdddlLrrrRdddldlluRRdrUrrdrruLLLLLrrrruuluLLLrrrdrrdddrUlluululllLuuulllddDrUluurrrdddrrrrdrrddrruLulllullllLLrrrrrrdrrDrdLdllullUUddrrdrruulululLLLuuulllddrdRRuuullDurrdddRRdddldlluRRdrUrrdrruLLLLLrrrruuluLLLLuuulldDuurrdddrrrrdrddlllUdrrruululllldLruuLLrrddlUrrrrrdrddllluUddrrruululLLLuLrddlUruuLLrrddlUrdrrdddldlluRdrruuuulluuLrddrrddddlluRdrUUUddrrruululLLLdlUUrdrrrrdrrruuulllllDurrrrrdddlllulLLLulUrdddlUUruuLLrrddlUruL
+
+./bin/Release/net9.0/soko ./levels/orig_2.sok
+Dead: 24 Free: 46
+move: 2, hashstate: 10, ptr: 8, ToProc: 12|16 threads: 2x7
+ 0:00:00.0 Mem: 236 MB, GC: 1/1/1 Active:    3.2K|   2.4K (  92.3K|  69.8K/s) - Visited:    4.4K|   3.7K ( 125.6K| 105.4K/s)  LP: 0|0  AvgProbe:     1.0|    1.0 MaxPrio: 247|241                
+Time: 00:00:00.0346593
+137 (F/B:135/2) pushes, 653 moves, deadlockrate: 0/135:0/2
+rdrRdddrruuLUUruulLulllldDuurrdLulDrrurrdLLrrrrddlUddlllulLLrrrdrrruruuLdddlllulllLLrrrrrdrrruuuLulllldDuurrrrdrdddlllulLLLdlUruLrdrruuurrdLulDDurrurrdrdddlllulLLLdlUUruLrddrruurrurrdLLLulDDurrrrrdddlllulLrrdrrDullulldddldlluRdrruuuuLLulDrdLuuLrrdrrddddlluRdrUUUUrrdrrruuulllllDurrrrrdddlllulLLLdlUruLrdrrrrdrrrdrddlllluLLdlluRdrUUUddrrdrrrruullullulLLLdlLrruulDrdLrurrdddrrdrrULLrrdrruulullDurrdrdLdllluLrdrrruuLrddlllulLdlluRdrUrrdrrruulullulllllLrrrrrrdrrrdddlllullUUddrrdrrruulullulLLLLrrrdddrrdrrULLrrruullDurDrddllluLLdlluRdrUUUddrrdrrruullululLLLrrdddrrdrUllluuulldlUrrrrrdrrrddLLLrruulDrddlluLLdlluRdrUrrdrruulululllllUrdrrrrdrrdddllullUUddrrdrruLLruululLLrrrdrddlLrruululllLrrrrdrddllLdlluRdrUUdrrruulullllulUrdddlUruuuLrdddlUrdrrrrdrddllluUddrrruululLLLuuulLrrddlULrruLrddddlUUruL
+
+Punishing if not pushing the same box:
+./bin/Release/net9.0/soko ./levels/orig_2.sok
+Dead: 24 Free: 46
+move: 2, hashstate: 10, ptr: 8, ToProc: 12|16 threads: 2x3
+ 0:00:00.6 Mem: 365 MB, GC: 13/3/2 Active:  367.6K| 319.1K ( 824.2K| 734.1K/s) - Visited:  509.3K| 410.0K (   1.2M| 962.9K/s)  LP: 0|0  AvgProbe:     1.0|    1.0 MaxPrio: 259|261                
+Time: 00:00:00.6576041
+137 (F/B:89/48) pushes, 561 moves, deadlockrate: 0/89:0/48
+rdrRdddrruuLUUruulLulllldDuurrrrdrrddldlllulLLLLrrruuurrdLulDDurrurrdrrddldlllulLuurrurrdLLLrrrrrddldlllullLLdlUUruLrddrrrrdrrruruulllllulDDurrrrrrddldlllulLLrrrdrrruUddlllulllLdlUUUruLrdddrrrrdrrruruuLLLLLulDDurrrrrdddlllulLrrdrrrdrddlluUruuuulllllddrrdrRdrUUUruLLLLLulDrrrrrdddlllullLLdlUruLrdrrrrdrrruuulllllDurrrrrdddlllulLrrdrrdddrUUUUUruLLLLLulDrrrrrdddlllullLLulDrdLrurrrrdrrruuulllllDurrrrrdddlllulLdddldlluRRdrUUUUrrdrrdddlluLLdlluRdrUrrdrruLLLrrruulDrddllulLLrrrdrruululullLLdlLrruulDrdLuLruLruuLrdLrrddrrrrdrrdddllullUUddrrdrruulululLLLdlUUUruLrdddrrdddldlluRRdrUUUddrrdrruulululLLLrrrrdrrddLLruulullllLrrrrrdrddlLLdlluRdrUUUddrrruululLLLdlUruLrdrrrrdrrruuulllllDurrrrrdddlllulLLLdlUUruL

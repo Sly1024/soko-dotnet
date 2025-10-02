@@ -5,7 +5,7 @@ namespace soko.Collections;
 
 public class ConcurrentBucketedPriorityQueue<T>
 {
-    private readonly ConcurrentAutoCreateList<ConcurrentExpandingQueue<T>> buckets;
+    public readonly ConcurrentAutoCreateList<ConcurrentExpandingQueue<T>> buckets;
     public int lowestPriority;
     private int count = 0;
 
