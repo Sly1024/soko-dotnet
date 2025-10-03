@@ -54,7 +54,7 @@ public class HeuristicDistanceComputer
                 int goalPos = level.goalPositions[goalIdx];
 
                 int goalRoom = rTable[goalPos];
-                if (goalRoom < minRoom) continue; // goal is not reachable, probably a box is on it - possibly :]
+                if (goalRoom == PlayerReachable.BOX) continue;   // goal has a box on it, skip
 
                 // check if box is in the same room as goal
                 if (rTable[boxPos - 1] == goalRoom || rTable[boxPos + 1] == goalRoom
