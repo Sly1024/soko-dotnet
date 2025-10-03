@@ -34,12 +34,12 @@ public class HeuristicDistanceComputer
 
     public int GetHeuristicDistance(int[] boxPositions, PlayerReachable reachable, bool push)
     {
-        var width = level.width;
+        var w = level.width;
 
         int numBoxesAdded = 0;
-        var pushes = push ? level.distances.Pushes : level.distances.Pulls;
+        var distances = push ? level.distances.Pushes : level.distances.Pulls;
 
-        int minRoom = reachable.CalculateRooms();
+        // int minRoom = reachable.CalculateRooms();
         var rTable = reachable.table;
 
         distArr.Clear();
@@ -48,7 +48,6 @@ public class HeuristicDistanceComputer
             int boxPos = boxPositions[boxIdx];
             if (level.table[boxPos].has(push ? Cell.Goal : Cell.Box)) continue; // if box is on Goal, its distance = 0, skip
 
-            var distances = pushes[boxPos];
             for (var goalIdx = 0; goalIdx < numBoxes; goalIdx++)
             {
                 int goalPos = level.goalPositions[goalIdx];
@@ -56,17 +55,27 @@ public class HeuristicDistanceComputer
                 int goalRoom = rTable[goalPos];
                 if (goalRoom == PlayerReachable.BOX) continue;   // goal has a box on it, skip
 
-                // check if box is in the same room as goal
-                if (rTable[boxPos - 1] == goalRoom || rTable[boxPos + 1] == goalRoom
-                 || rTable[boxPos - width] == goalRoom || rTable[boxPos + width] == goalRoom)
+                // check the "optimal" path from the box to goal and if there's a box on it, just add 1
+                var currentPos = boxPos;
+                var currentDistance = distances[currentPos][goalIdx];
+                if (currentDistance == HeuristicDistances.Unreachable) continue;    // unreachable goal, skip
+
+                int distanceWithPenalty = currentDistance;
+
+                while (currentDistance > 0)
                 {
-                    distArr.Add((boxIdx, goalIdx, distances[goalIdx]));
+                    var nextPos = currentPos;
+                    if (distances[currentPos - 1] != null && distances[currentPos - 1][goalIdx] < currentDistance) currentDistance = distances[nextPos = currentPos - 1][goalIdx];
+                    if (distances[currentPos + 1] != null && distances[currentPos + 1][goalIdx] < currentDistance) currentDistance = distances[nextPos = currentPos + 1][goalIdx];
+                    if (distances[currentPos - w] != null && distances[currentPos - w][goalIdx] < currentDistance) currentDistance = distances[nextPos = currentPos - w][goalIdx];
+                    if (distances[currentPos + w] != null && distances[currentPos + w][goalIdx] < currentDistance) currentDistance = distances[nextPos = currentPos + w][goalIdx];
+
+                    if (currentPos == nextPos) throw new ArgumentException("HeuristicDistanceComputer error - no path found to goal");
+                    if (rTable[nextPos] == PlayerReachable.BOX) distanceWithPenalty++;
+                    currentPos = nextPos;
                 }
-                else
-                {
-                    // punish by 2x if not reachable
-                    distArr.Add((boxIdx, goalIdx, distances[goalIdx]));
-                }
+
+                distArr.Add((boxIdx, goalIdx, distanceWithPenalty));
             }
             numBoxesAdded++;
         }
